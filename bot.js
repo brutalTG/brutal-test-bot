@@ -1,20 +1,16 @@
-// ============================================
-// BRUTAL TEST BOT — Drop Modelo (20 interacciones)
-// ============================================
-
 var Telegraf = require("telegraf").Telegraf;
 var Markup = require("telegraf").Markup;
 var https = require("https");
+var fs = require("fs");
 
-// --- CONFIG ---
 var BOT_TOKEN = process.env.BOT_TOKEN;
-var SHEET_WEBHOOK = process.env.GOOGLE_SHEET_WEBHOOK;
+var SHEET_WEBHOOK = process.env.GOOGLE_SHEET_WEBHOOK || "";
+var LOG_CHANNEL = process.env.LOG_CHANNEL || "";
 
 if (!BOT_TOKEN) { console.error("ERROR: BOT_TOKEN no definido"); process.exit(1); }
 
 var bot = new Telegraf(BOT_TOKEN);
 
-// --- STATE PER USER ---
 var sessions = {};
 
 function getSession(ctx) {
@@ -38,69 +34,75 @@ function getSession(ctx) {
   return sessions[id];
 }
 
-// --- LOG TO GOOGLE SHEETS (native https, no node-fetch) ---
-function logToSheet(data) {
-  if (!SHEET_WEBHOOK || SHEET_WEBHOOK === "PEGA_ACA_LA_URL_DEL_APPS_SCRIPT") {
-    console.log("[LOG]", JSON.stringify(data));
-    return Promise.resolve();
+// --- LOGGING: 3 methods, all fire simultaneously ---
+function logData(data) {
+  // 1. Console log (always works, visible in Railway logs)
+  console.log("[DATA] " + JSON.stringify(data));
+
+  // 2. Send to Telegram channel if configured
+  if (LOG_CHANNEL) {
+    var msg = "#i" + data.interaction_num + " " + data.interaction_type + " | " + data.interaction_name + "\n" +
+      "User: " + data.username + " (" + data.telegram_id + ")\n" +
+      "Response: " + data.response + "\n" +
+      "Latency: " + data.latency_ms + "ms | Points: " + data.cumulative_points;
+    if (data.trap_result) msg += " | Trap: " + data.trap_result;
+    if (data.completed_drop) msg += "\n== DROP COMPLETED ==";
+    
+    bot.telegram.sendMessage(LOG_CHANNEL, msg).catch(function(err) {
+      console.error("Channel log error:", err.message);
+    });
   }
 
-  return new Promise(function(resolve) {
+  // 3. Google Sheets webhook if configured
+  if (SHEET_WEBHOOK && SHEET_WEBHOOK.indexOf("script.google.com") !== -1) {
     try {
       var postData = JSON.stringify(data);
-      var urlObj = new URL(SHEET_WEBHOOK);
-
+      var urlParts = new URL(SHEET_WEBHOOK);
       var options = {
-        hostname: urlObj.hostname,
-        path: urlObj.pathname + urlObj.search,
+        hostname: urlParts.hostname,
+        path: urlParts.pathname,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Content-Length": Buffer.byteLength(postData)
         }
       };
-
       var req = https.request(options, function(res) {
-        // Follow redirect (Google Apps Script redirects on POST)
-        if (res.statusCode === 302 || res.statusCode === 301) {
-          var redirectUrl = res.headers.location;
-          if (redirectUrl) {
-            https.get(redirectUrl, function() { resolve(); }).on("error", function() { resolve(); });
-            return;
-          }
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          https.get(res.headers.location, function(r) { r.resume(); });
         }
         res.resume();
-        resolve();
       });
-
-      req.on("error", function(err) {
-        console.error("Sheet log error:", err.message);
-        resolve();
-      });
-
+      req.on("error", function() {});
       req.write(postData);
       req.end();
-    } catch (err) {
-      console.error("Sheet log error:", err.message);
-      resolve();
-    }
+    } catch(e) {}
+  }
+
+  // 4. Append to local CSV (persists as long as Railway container lives)
+  var csvLine = [
+    data.timestamp, data.telegram_id, data.username, data.interaction_num,
+    data.interaction_type, data.interaction_name, '"' + String(data.response).replace(/"/g, '""') + '"',
+    data.latency_ms, data.cumulative_points, data.trap_result, data.completed_drop
+  ].join(",") + "\n";
+  
+  fs.appendFile("/tmp/brutal_data.csv", csvLine, function(err) {
+    if (err) console.error("CSV write error:", err.message);
   });
 }
 
 // --- THE 20 INTERACTIONS ---
 var INTERACTIONS = [
-  // 1. CULTURE - OPENER
   {
     id: 1, type: "culture", name: "opener_moda",
-    text: "Sin pensar.\n\nQuien te vende mejor una zapatilla?\nUn pibe de 17 filmandose en el espejo con el outfit — o una modelo profesional con el mismo outfit.",
+    text: "Sin pensar.\n\nQuien te vende mejor una zapatilla?\nUn pibe de 17 filmandose en el espejo con el outfit -- o una modelo profesional con el mismo outfit.",
     options: [
       { text: "El pibe", data: "pibe" },
       { text: "La modelo", data: "modelo" }
     ],
     points: 10,
-    reaction: "++ +10 — Arrancamos."
+    reaction: "++ +10 -- Arrancamos."
   },
-  // 2. NIKE - BRAND 1/2
   {
     id: 2, type: "brand", name: "nike_estetica",
     text: "Cual pones en tu story?\n\nA: Campana fondo negro, zapatilla flotando, tipografia minima.\nB: Explosion de color, distorsion, ruido visual.",
@@ -111,7 +113,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "++ +$0.10"
   },
-  // 3. CULTURE - IDENTIDAD / PROYECCIÓN
   {
     id: 3, type: "culture", name: "cultura_genero",
     text: "Pensa en los pibes de tu edad. Hoy ser hombre es mas facil o mas dificil que hace 10 anos?",
@@ -123,7 +124,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "++ +10"
   },
-  // 4. POLÍTICO A - BRAND 1/2
   {
     id: 4, type: "brand", name: "politicoA_dolar_proyeccion",
     text: "La mayoria de los pibes de tu edad bancaria una dolarizacion total de la economia?",
@@ -135,7 +135,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "++ +$0.10"
   },
-  // 5. TRAP 1
   {
     id: 5, type: "trap", name: "trap_boton_azul",
     text: "TOCA EL BOTON AZUL.",
@@ -149,7 +148,6 @@ var INTERACTIONS = [
     reactionPass: "Buen ojo. +10 bonus.",
     reactionFail: "Te agarramos en piloto automatico. -10."
   },
-  // 6. SPOTIFY - BRAND 1/2 (confesionario)
   {
     id: 6, type: "brand", name: "spotify_verguenza",
     text: "Una cancion que escuchas en loop pero JAMAS pondrias en una juntada. Escribila.",
@@ -157,7 +155,6 @@ var INTERACTIONS = [
     points: 15,
     reaction: "Secreto guardado. ++ +$0.15"
   },
-  // 7. CULTURE - RED PILL / BLUE PILL
   {
     id: 7, type: "culture", name: "cultura_emigrar",
     text: "Vivir en Argentina ganando bien en pesos.\nVivir afuera ganando lo mismo en dolares.\n\nNo hay tercera opcion.",
@@ -168,7 +165,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "++ +10"
   },
-  // 8. AFA - BRAND 1/2 (multi-select)
   {
     id: 8, type: "brand", name: "afa_consumo_futbol",
     text: "Como miras futbol? Elegi TODAS las que aplican. Cuando termines toca LISTO.",
@@ -184,7 +180,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "++ +$0.10"
   },
-  // 9. POLÍTICO B - BRAND 1/2 (escala Milei)
   {
     id: 9, type: "brand", name: "politicoB_milei_escala",
     text: "Milei. Instinto puro. Como te cae hoy?",
@@ -198,7 +193,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "++ +$0.10"
   },
-  // 10. CULTURE - HOT TAKE
   {
     id: 10, type: "culture", name: "cultura_messi_maradona",
     text: "HOT TAKE. Sin pensar.\n\nMessi es mas grande que Maradona.",
@@ -209,7 +203,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "++ +10"
   },
-  // 11. MELI - BRAND 1/1
   {
     id: 11, type: "brand", name: "meli_precio_inmediatez",
     text: "Pedis algo en MeLi. Llega en 3 dias. Cuanto mas pagarias para que llegue HOY?",
@@ -222,7 +215,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "++ +$0.10"
   },
-  // 12. TRAP 2
   {
     id: 12, type: "trap", name: "trap_agua_moja",
     text: "Pregunta seria.\n\nEl agua moja?",
@@ -237,7 +229,6 @@ var INTERACTIONS = [
     reactionPass: "Seguis ahi. +10.",
     reactionFail: "Hmm. -5."
   },
-  // 13. SPOTIFY - BRAND 2/2
   {
     id: 13, type: "brand", name: "spotify_crush",
     text: "Situacion. Tu crush mira tu Spotify. Que playlist preferis que vea?",
@@ -248,7 +239,6 @@ var INTERACTIONS = [
     points: 10,
     reactionFn: true
   },
-  // 14. POLÍTICO A - BRAND 2/2
   {
     id: 14, type: "brand", name: "politicoA_dolar_costo",
     text: "Vuelve el tema. Argentina dolariza. Tu familia gana lo mismo pero tu celu nuevo sale el doble. Seguis bancando?",
@@ -259,15 +249,13 @@ var INTERACTIONS = [
     points: 10,
     reaction: "++ +$0.10"
   },
-  // 15. CULTURE - CONFESIONARIO PROFUNDO
   {
     id: 15, type: "culture", name: "cultura_miedo",
     text: "Ultima de este tipo. Sin filtro.\n\nDe que tenes miedo de verdad?",
     options: "free_text",
     points: 20,
-    reaction: "++ +20 — Gracias por la honestidad."
+    reaction: "++ +20 -- Gracias por la honestidad."
   },
-  // 16. NIKE - BRAND 2/2
   {
     id: 16, type: "brand", name: "nike_zapatilla_reaccion",
     text: "Imagina: video corto, un pibe caminando, zapatillas en foco, sin logo visible. Tu reaccion:",
@@ -280,7 +268,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "++ +$0.10"
   },
-  // 17. AFA - BRAND 2/2
   {
     id: 17, type: "brand", name: "afa_futuro_futbol",
     text: "Modo futurologo. En 5 anos, el futbol argentino se va a ver...",
@@ -292,10 +279,9 @@ var INTERACTIONS = [
     points: 10,
     reaction: "++ +$0.10"
   },
-  // 18. POLÍTICO B - BRAND 2/2
   {
     id: 18, type: "brand", name: "politicoB_2027",
-    text: "Elecciones 2027. Dos opciones. No hay tercera. No hay blanco. No hay nulo.\n\nContinuidad del modelo Milei — o vuelta al kirchnerismo.",
+    text: "Elecciones 2027. Dos opciones. No hay tercera. No hay blanco. No hay nulo.\n\nContinuidad del modelo Milei -- o vuelta al kirchnerismo.",
     options: [
       { text: "Continuidad Milei", data: "milei" },
       { text: "Vuelta K", data: "kirchnerismo" }
@@ -303,7 +289,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "++ +$0.10"
   },
-  // 19. TRAP 3
   {
     id: 19, type: "trap", name: "trap_leer_bien",
     text: "Lee bien antes de tocar.\n\nCuantos meses tiene un ano que tienen 28 dias?",
@@ -317,17 +302,15 @@ var INTERACTIONS = [
     reactionPass: "Bien. Todos los meses tienen al menos 28. +10.",
     reactionFail: "Lee de nuevo. Todos tienen al menos 28 dias. -5."
   },
-  // 20. CULTURE - CIERRE
   {
     id: 20, type: "culture", name: "cultura_cierre_deseo",
-    text: "Ultima. Completa la frase.\n\nSi manana desapareciera de Argentina, nadie extrañaria ___\n\nEscribi lo primero que se te viene.",
+    text: "Ultima. Completa la frase.\n\nSi manana desapareciera de Argentina, nadie extraniaria ___\n\nEscribi lo primero que se te viene.",
     options: "free_text",
     points: 20,
-    reaction: "++ +20 — Drop completo."
+    reaction: "++ +20 -- Drop completo."
   }
 ];
 
-// --- SEND INTERACTION ---
 function sendInteraction(ctx, session) {
   var idx = session.current;
   if (idx >= INTERACTIONS.length) {
@@ -336,7 +319,6 @@ function sendInteraction(ctx, session) {
 
   var inter = INTERACTIONS[idx];
 
-  // Multi-select
   if (inter.multiSelect) {
     session.multiSelectState = { selected: {}, messageId: null };
     var keyboard = buildMultiSelectKeyboard(inter, session.multiSelectState.selected);
@@ -346,14 +328,12 @@ function sendInteraction(ctx, session) {
     });
   }
 
-  // Free text
   if (inter.options === "free_text") {
     session.awaitingText = true;
     session.lastSentAt = Date.now();
     return ctx.reply(inter.text);
   }
 
-  // Standard inline keyboard
   var buttons = [];
   for (var i = 0; i < inter.options.length; i++) {
     var opt = inter.options[i];
@@ -378,7 +358,6 @@ function sendInteraction(ctx, session) {
   return ctx.reply(inter.text, keyboard);
 }
 
-// --- MULTI-SELECT KEYBOARD ---
 function buildMultiSelectKeyboard(inter, selected) {
   var buttons = [];
   for (var i = 0; i < inter.options.length; i++) {
@@ -390,7 +369,6 @@ function buildMultiSelectKeyboard(inter, selected) {
   return Markup.inlineKeyboard(buttons);
 }
 
-// --- PROCESS RESPONSE ---
 function processResponse(ctx, session, responseData) {
   var idx = session.current;
   var inter = INTERACTIONS[idx];
@@ -414,8 +392,7 @@ function processResponse(ctx, session, responseData) {
   session.points += points;
   if (session.points < 0) session.points = 0;
 
-  // Log
-  logToSheet({
+  logData({
     timestamp: new Date().toISOString(),
     telegram_id: session.telegram_id,
     username: session.username,
@@ -429,12 +406,11 @@ function processResponse(ctx, session, responseData) {
     completed_drop: ""
   });
 
-  // Reaction
   var reaction;
   if (inter.type === "trap") {
     reaction = trapResult === "PASS" ? inter.reactionPass : inter.reactionFail;
   } else if (inter.reactionFn) {
-    reaction = responseData === "real" ? "++ +$0.10 — Seguro que si." : "++ +$0.10 — Honestidad brutal.";
+    reaction = responseData === "real" ? "++ +$0.10 -- Seguro que si." : "++ +$0.10 -- Honestidad brutal.";
   } else {
     reaction = inter.reaction;
   }
@@ -449,7 +425,6 @@ function processResponse(ctx, session, responseData) {
   });
 }
 
-// --- FINISH DROP ---
 function finishDrop(ctx, session) {
   session.finished = true;
 
@@ -462,7 +437,7 @@ function finishDrop(ctx, session) {
     INTERACTIONS.length + " interacciones completadas\n\n" +
     "Gracias. Tu senal fue registrada. Nadie sabe que respondiste.";
 
-  logToSheet({
+  logData({
     timestamp: new Date().toISOString(),
     telegram_id: session.telegram_id,
     username: session.username,
@@ -478,8 +453,6 @@ function finishDrop(ctx, session) {
 
   return ctx.reply(summary);
 }
-
-// --- HANDLERS ---
 
 bot.start(function(ctx) {
   var session = getSession(ctx);
@@ -508,7 +481,7 @@ bot.action("start_drop", function(ctx) {
     session.started = true;
     session.current = 0;
 
-    logToSheet({
+    logData({
       timestamp: new Date().toISOString(),
       telegram_id: session.telegram_id,
       username: session.username,
@@ -536,28 +509,22 @@ bot.action("later", function(ctx) {
   });
 });
 
-// Standard button responses
 bot.action(/^resp_(\d+)_(.+)$/, function(ctx) {
   return ctx.answerCbQuery().then(function() {
     var session = getSession(ctx);
     if (session.finished) return;
-
     var actionIdx = parseInt(ctx.match[1]);
     var responseData = ctx.match[2];
-
     if (actionIdx !== session.current) return;
-
     return processResponse(ctx, session, responseData);
   });
 });
 
-// Multi-select toggles
 bot.action(/^multi_(.+)$/, function(ctx) {
   return ctx.answerCbQuery().then(function() {
     var session = getSession(ctx);
     if (session.finished) return;
     if (!session.multiSelectState) return;
-
     var value = ctx.match[1];
     var inter = INTERACTIONS[session.current];
 
@@ -571,7 +538,6 @@ bot.action(/^multi_(.+)$/, function(ctx) {
       return processResponse(ctx, session, responseData);
     }
 
-    // Toggle
     if (session.multiSelectState.selected[value]) {
       delete session.multiSelectState.selected[value];
     } else {
@@ -581,42 +547,41 @@ bot.action(/^multi_(.+)$/, function(ctx) {
     try {
       var keyboard = buildMultiSelectKeyboard(inter, session.multiSelectState.selected);
       return ctx.editMessageReplyMarkup(keyboard.reply_markup);
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
   });
 });
 
-// Free text
 bot.on("text", function(ctx) {
   var session = getSession(ctx);
   if (!session.started || session.finished) return;
   if (!session.awaitingText) return;
-
   session.awaitingText = false;
   var text = ctx.message.text.substring(0, 500);
   return processResponse(ctx, session, text);
 });
 
-// /reset
 bot.command("reset", function(ctx) {
-  var id = ctx.from.id;
-  delete sessions[id];
+  delete sessions[ctx.from.id];
   return ctx.reply("Session reseteada. Manda /start para arrancar de nuevo.");
 });
 
-// /status
 bot.command("status", function(ctx) {
   var session = getSession(ctx);
   if (!session.started) return ctx.reply("No arrancaste todavia. Manda /start.");
   if (session.finished) return ctx.reply("Drop completado. " + session.points + " puntos.");
-  var current = session.current + 1;
-  return ctx.reply("Interaccion " + current + "/" + INTERACTIONS.length + ". " + session.points + " puntos.");
+  return ctx.reply("Interaccion " + (session.current + 1) + "/" + INTERACTIONS.length + ". " + session.points + " puntos.");
 });
 
-// --- LAUNCH ---
+// --- INIT CSV WITH HEADERS ---
+var csvHeaders = "timestamp,telegram_id,username,interaction_num,interaction_type,interaction_name,response,latency_ms,cumulative_points,trap_result,completed_drop\n";
+fs.writeFileSync("/tmp/brutal_data.csv", csvHeaders);
+
 bot.launch().then(function() {
   console.log("BRUTAL Bot arranco. Esperando nodos...");
+  if (LOG_CHANNEL) console.log("Logging to Telegram channel: " + LOG_CHANNEL);
+  if (SHEET_WEBHOOK) console.log("Logging to Google Sheet webhook");
+  console.log("Logging to /tmp/brutal_data.csv");
+  console.log("Logging to console (Railway logs)");
 });
 
 process.once("SIGINT", function() { bot.stop("SIGINT"); });
