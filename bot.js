@@ -31,6 +31,7 @@ function getSession(ctx) {
       started: false,
       finished: false,
       awaitingText: false,
+      awaitingMedia: false,
       multiSelectState: null,
       drop_id: null,
       anonymous_id: null
@@ -79,17 +80,14 @@ function supabaseRequest(method, path, body, callback) {
   req.end();
 }
 
-// Busca o crea el usuario en Supabase y devuelve su anonymous_id
 function getOrCreateUser(telegramId, username, callback) {
-  // Primero buscar si ya existe
   var searchPath = "/rest/v1/users?telegram_id=eq." + telegramId + "&select=id,anonymous_id,status";
   supabaseRequest("GET", searchPath, null, function(err, result) {
     if (err || !result || result.length === 0) {
-      // No existe, crear usuario nuevo
       var newUser = {
         telegram_id: telegramId,
         telegram_username: username,
-        phone: "tg_" + telegramId, // placeholder hasta que tengamos onboarding completo
+        whatsapp_phone: "tg_" + telegramId, // placeholder hasta onboarding real via Tally
         status: "active"
       };
       supabaseRequest("POST", "/rest/v1/users", newUser, function(err2, created) {
@@ -98,7 +96,6 @@ function getOrCreateUser(telegramId, username, callback) {
           callback(null, null);
           return;
         }
-        // Crear wallet para el usuario nuevo
         var wallet = { user_id: created[0].id };
         supabaseRequest("POST", "/rest/v1/wallets", wallet, function() {});
         callback(created[0].id, created[0].anonymous_id);
@@ -109,12 +106,10 @@ function getOrCreateUser(telegramId, username, callback) {
   });
 }
 
-// Busca o crea el Drop activo del día
 function getOrCreateActiveDrop(callback) {
   var searchPath = "/rest/v1/drops?status=eq.active&select=id,drop_number&limit=1";
   supabaseRequest("GET", searchPath, null, function(err, result) {
     if (err || !result || result.length === 0) {
-      // Crear Drop de prueba si no hay ninguno activo
       var newDrop = {
         name: "Drop Test #1",
         drop_number: 1,
@@ -136,17 +131,16 @@ function getOrCreateActiveDrop(callback) {
   });
 }
 
-// Guarda una respuesta en drop_responses
 function saveResponse(data) {
   if (!data.anonymous_id || !data.drop_id) {
-    console.log("[SKIP] Respuesta sin anonymous_id o drop_id, solo log local");
+    console.log("[SKIP] Respuesta sin anonymous_id o drop_id");
     return;
   }
 
   var record = {
     anonymous_id: data.anonymous_id,
     drop_id: data.drop_id,
-    interaction_id: null, // sin tabla drop_interactions por ahora, hardcodeado
+    interaction_id: null,
     response_value: String(data.response),
     response_type: data.interaction_type,
     latency_ms: data.latency_ms,
@@ -155,27 +149,27 @@ function saveResponse(data) {
     trap_passed: data.trap_result === "PASS" ? true : data.trap_result === "FAIL" ? false : null,
     is_valid: true,
     drop_number: data.interaction_num,
-    interaction_position: data.interaction_num
+    interaction_position: data.interaction_num,
+    media_file_id: data.media_file_id || null,
+    media_type: data.media_type || null
   };
 
   supabaseRequest("POST", "/rest/v1/drop_responses", record, function(err, result) {
     if (err) {
-      console.error("Error guardando respuesta en Supabase:", err.message);
+      console.error("Error guardando respuesta:", err.message);
     } else {
-      console.log("[SUPABASE] Respuesta guardada OK - interaccion:", data.interaction_num);
+      console.log("[SUPABASE] Respuesta guardada - interaccion:", data.interaction_num, data.media_type ? "| media: " + data.media_type : "");
     }
   });
 }
 
-// Actualiza puntos en la wallet del usuario
 function updateWallet(userId, points) {
   if (!userId || points <= 0) return;
-  // Primero traer saldo actual
   var path = "/rest/v1/wallets?user_id=eq." + userId + "&select=id,cash_balance,cash_total";
   supabaseRequest("GET", path, null, function(err, result) {
     if (err || !result || result.length === 0) return;
     var current = result[0];
-    var cashToAdd = points * 0.01; // 1 punto = $0.01 USD, ajustar según modelo final
+    var cashToAdd = points * 0.01;
     var update = {
       cash_balance: parseFloat(current.cash_balance) + cashToAdd,
       cash_total: parseFloat(current.cash_total) + cashToAdd,
@@ -185,31 +179,28 @@ function updateWallet(userId, points) {
   });
 }
 
-// ─── LOG (Supabase + Channel + CSV) ─────────────────────────────────
+// ─── LOG ─────────────────────────────────────────────────────────────
 
 function logData(data) {
   console.log("[DATA] " + JSON.stringify(data));
 
-  // Guardar en Supabase si tenemos anonymous_id
   if (data.anonymous_id && data.interaction_type !== "system") {
     saveResponse(data);
   }
 
-  // Log al canal de Telegram si está configurado
   if (LOG_CHANNEL) {
     var msg = "#i" + data.interaction_num + " " + data.interaction_type + " | " + data.interaction_name + "\n" +
-      "User: " + data.username + " (" + data.telegram_id + ")\n" +
+      "User: " + data.username + "\n" +
       "Response: " + data.response + "\n" +
       "Latency: " + data.latency_ms + "ms | Points: " + data.cumulative_points;
     if (data.trap_result) msg += " | Trap: " + data.trap_result;
+    if (data.media_type) msg += " | Media: " + data.media_type;
     if (data.completed_drop) msg += "\n██ DROP COMPLETED ██";
-
     bot.telegram.sendMessage(LOG_CHANNEL, msg).catch(function(err) {
       console.error("Channel log error:", err.message);
     });
   }
 
-  // CSV de respaldo
   var csvLine = [
     data.timestamp, data.telegram_id, data.username, data.interaction_num,
     data.interaction_type, data.interaction_name, '"' + String(data.response).replace(/"/g, '""') + '"',
@@ -221,10 +212,9 @@ function logData(data) {
   });
 }
 
-// ─── INTERACCIONES (sin cambios) ─────────────────────────────────────
+// ─── INTERACCIONES ────────────────────────────────────────────────────
 
 var INTERACTIONS = [
-  // 1. CULTURE - OPENER
   {
     id: 1, type: "culture", name: "opener_moda",
     text: "👀 Sin pensar.\n\n¿Quién te vende mejor una zapatilla?\n\nUn pibe de 17 filmándose en el espejo con el outfit — o una modelo profesional con el mismo outfit.",
@@ -235,7 +225,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +10 — Arrancamos."
   },
-  // 2. NIKE - BRAND 1/2
   {
     id: 2, type: "brand", name: "nike_estetica",
     text: "👟 Nike saca dos campañas. ¿Cuál ponés en tu story?\n\nA: Fondo negro, zapatilla flotando, tipografía mínima.\nB: Explosión de color, distorsión, ruido visual.",
@@ -246,7 +235,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +$0.10"
   },
-  // 3. CULTURE - IDENTIDAD
   {
     id: 3, type: "culture", name: "cultura_genero",
     text: "🤔 Pensá en los pibes de tu edad.\n\nHoy ser hombre es más fácil o más difícil que hace 10 años?",
@@ -258,7 +246,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +10"
   },
-  // 4. POLÍTICO A - BRAND 1/2
   {
     id: 4, type: "brand", name: "politicoA_dolar_proyeccion",
     text: "💵 ¿La mayoría de los pibes de tu edad bancaría una dolarización total de la economía?",
@@ -270,7 +257,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +$0.10"
   },
-  // 5. TRAP 1
   {
     id: 5, type: "trap", name: "trap_boton_azul",
     text: "⚠️ TOCÁ EL BOTÓN AZUL.",
@@ -284,7 +270,6 @@ var INTERACTIONS = [
     reactionPass: "✅ Buen ojo. +10 bonus.",
     reactionFail: "👁 Te agarramos en piloto automático. -10."
   },
-  // 6. SPOTIFY - BRAND 1/2 (confesionario)
   {
     id: 6, type: "brand", name: "spotify_verguenza",
     text: "🎧 Una canción que escuchás en loop pero JAMÁS pondrías en una juntada.\n\n✍️ Escribí lo que quieras.",
@@ -292,7 +277,6 @@ var INTERACTIONS = [
     points: 15,
     reaction: "🤫 Secreto guardado. ⚡ +$0.15"
   },
-  // 7. CULTURE - RED PILL / BLUE PILL
   {
     id: 7, type: "culture", name: "cultura_emigrar",
     text: "💊 Elegí una. No hay tercera opción.\n\n🔵 Vivir en Argentina ganando bien en pesos.\n🔴 Vivir afuera ganando lo mismo en dólares.",
@@ -303,7 +287,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +10"
   },
-  // 8. AFA - BRAND 1/2 (multi-select)
   {
     id: 8, type: "brand", name: "afa_consumo_futbol",
     text: "⚽ ¿Cómo mirás fútbol? Elegí TODAS las que aplican.\n\nCuando termines tocá LISTO.",
@@ -319,7 +302,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +$0.10"
   },
-  // 9. POLÍTICO B - BRAND 1/2 (escala Milei)
   {
     id: 9, type: "brand", name: "politicoB_milei_escala",
     text: "🇲 Milei. Instinto puro. ¿Cómo te cae hoy?",
@@ -333,7 +315,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +$0.10"
   },
-  // 10. CULTURE - HOT TAKE
   {
     id: 10, type: "culture", name: "cultura_messi_maradona",
     text: "🔥 HOT TAKE. Sin pensar.\n\nMessi es más grande que Maradona.",
@@ -344,7 +325,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +10 💯"
   },
-  // 11. MELI - BRAND 1/1
   {
     id: 11, type: "brand", name: "meli_precio_inmediatez",
     text: "📦 Pedís algo en MeLi. Llega en 3 días.\n\n¿Cuánto más pagarías para que llegue HOY?",
@@ -357,7 +337,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +$0.10"
   },
-  // 12. TRAP 2
   {
     id: 12, type: "trap", name: "trap_agua_moja",
     text: "🧐 Pregunta seria.\n\n¿El agua moja?",
@@ -372,7 +351,6 @@ var INTERACTIONS = [
     reactionPass: "✅ Seguís ahí. +10.",
     reactionFail: "👁 Hmm. -5."
   },
-  // 13. SPOTIFY - BRAND 2/2
   {
     id: 13, type: "brand", name: "spotify_crush",
     text: "💘 Situación: tu crush mira tu Spotify.\n\n¿Qué playlist preferís que vea?",
@@ -383,7 +361,6 @@ var INTERACTIONS = [
     points: 10,
     reactionFn: true
   },
-  // 14. POLÍTICO A - BRAND 2/2
   {
     id: 14, type: "brand", name: "politicoA_dolar_costo",
     text: "💵 Vuelve el tema.\n\nArgentina dolariza. Tu familia gana lo mismo pero tu celu nuevo sale el doble.\n\n¿Seguís bancando?",
@@ -394,7 +371,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +$0.10"
   },
-  // 15. CULTURE - CONFESIONARIO PROFUNDO
   {
     id: 15, type: "culture", name: "cultura_miedo",
     text: "🖤 Última de este tipo. Sin filtro.\n\n¿De qué tenés miedo de verdad?\n\n✍️ Escribí lo que quieras.",
@@ -402,7 +378,6 @@ var INTERACTIONS = [
     points: 20,
     reaction: "⚡ +20 — Gracias por la honestidad."
   },
-  // 16. NIKE - BRAND 2/2
   {
     id: 16, type: "brand", name: "nike_sin_logo",
     text: "👟 Ves a un pibe en la calle con unas zapatillas que te encantan. No tienen logo visible. Ninguna marca.\n\n¿Las usarías igual?",
@@ -414,7 +389,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +$0.10"
   },
-  // 17. AFA - BRAND 2/2
   {
     id: 17, type: "brand", name: "afa_futuro_futbol",
     text: "🔮 Modo futurólogo.\n\nEn 5 años, el fútbol argentino se va a ver...",
@@ -426,7 +400,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +$0.10"
   },
-  // 18. POLÍTICO B - BRAND 2/2
   {
     id: 18, type: "brand", name: "politicoB_2027",
     text: "🗳️ Elecciones 2027. Dos opciones.\n\nNo hay tercera. No hay blanco. No hay nulo.\n\nContinuidad del modelo Milei — o vuelta al kirchnerismo.",
@@ -437,7 +410,6 @@ var INTERACTIONS = [
     points: 10,
     reaction: "⚡ +$0.10"
   },
-  // 19. TRAP 3
   {
     id: 19, type: "trap", name: "trap_leer_bien",
     text: "💡 Leé bien antes de tocar.\n\n¿Cuántos meses tiene un año que tienen 28 días?",
@@ -451,7 +423,6 @@ var INTERACTIONS = [
     reactionPass: "✅ Bien. Todos los meses tienen al menos 28. +10.",
     reactionFail: "👁 Leé de nuevo. Todos tienen al menos 28 días. -5."
   },
-  // 20. CULTURE - CIERRE
   {
     id: 20, type: "culture", name: "cultura_cierre_deseo",
     text: "🎭 Última. Completá la frase.\n\nSi mañana desapareciera de Argentina, nadie extrañaría ___\n\n✍️ Escribí lo primero que se te viene.",
@@ -461,7 +432,7 @@ var INTERACTIONS = [
   }
 ];
 
-// ─── FLUJO DEL DROP (sin cambios) ────────────────────────────────────
+// ─── FLUJO DEL DROP ───────────────────────────────────────────────────
 
 function sendInteraction(ctx, session) {
   var idx = session.current;
@@ -470,7 +441,7 @@ function sendInteraction(ctx, session) {
   }
 
   var inter = INTERACTIONS[idx];
-  var progress = "📊 " + (idx + 1) + "/20\n\n";
+  var progress = "📊 " + (idx + 1) + "/" + INTERACTIONS.length + "\n\n";
 
   if (inter.multiSelect) {
     session.multiSelectState = { selected: {}, messageId: null };
@@ -483,6 +454,12 @@ function sendInteraction(ctx, session) {
 
   if (inter.options === "free_text") {
     session.awaitingText = true;
+    session.lastSentAt = Date.now();
+    return ctx.reply(progress + inter.text);
+  }
+
+  if (inter.options === "media") {
+    session.awaitingMedia = true;
     session.lastSentAt = Date.now();
     return ctx.reply(progress + inter.text);
   }
@@ -506,9 +483,8 @@ function sendInteraction(ctx, session) {
     }
   }
 
-  var keyboard = Markup.inlineKeyboard(rows);
   session.lastSentAt = Date.now();
-  return ctx.reply(progress + inter.text, keyboard);
+  return ctx.reply(progress + inter.text, Markup.inlineKeyboard(rows));
 }
 
 function buildMultiSelectKeyboard(inter, selected) {
@@ -522,7 +498,7 @@ function buildMultiSelectKeyboard(inter, selected) {
   return Markup.inlineKeyboard(buttons);
 }
 
-function processResponse(ctx, session, responseData) {
+function processResponse(ctx, session, responseData, mediaData) {
   var idx = session.current;
   var inter = INTERACTIONS[idx];
   var latency = session.lastSentAt ? Date.now() - session.lastSentAt : 0;
@@ -545,12 +521,11 @@ function processResponse(ctx, session, responseData) {
   session.points += points;
   if (session.points < 0) session.points = 0;
 
-  // Actualizar wallet si tenemos user_id
   if (session.user_id && points > 0) {
     updateWallet(session.user_id, points);
   }
 
-  logData({
+  var logEntry = {
     timestamp: new Date().toISOString(),
     telegram_id: session.telegram_id,
     username: session.username,
@@ -564,7 +539,15 @@ function processResponse(ctx, session, responseData) {
     cumulative_points: session.points,
     trap_result: trapResult,
     completed_drop: ""
-  });
+  };
+
+  // Agregar datos de media si existen
+  if (mediaData) {
+    logEntry.media_file_id = mediaData.file_id;
+    logEntry.media_type = mediaData.type;
+  }
+
+  logData(logEntry);
 
   var reaction;
   if (inter.type === "trap") {
@@ -622,6 +605,27 @@ function finishDrop(ctx, session) {
 bot.start(function(ctx) {
   var session = getSession(ctx);
 
+  // Si viene con invite_code via deep link (?start=CODIGO), linkear al usuario
+  var startPayload = ctx.startPayload;
+  if (startPayload && startPayload.length > 0) {
+    console.log("[INVITE] Deep link recibido:", startPayload);
+    // Buscar usuario por invite_code y linkearlo con este telegram_id
+    var linkPath = "/rest/v1/users?invite_code=eq." + startPayload + "&select=id,anonymous_id,status";
+    supabaseRequest("GET", linkPath, null, function(err, result) {
+      if (!err && result && result.length > 0) {
+        var update = {
+          telegram_id: ctx.from.id,
+          telegram_username: ctx.from.username || ctx.from.first_name || "anon",
+          telegram_linked_at: new Date().toISOString(),
+          status: "active"
+        };
+        supabaseRequest("PATCH", "/rest/v1/users?invite_code=eq." + startPayload, update, function() {
+          console.log("[INVITE] Usuario linkeado con telegram_id:", ctx.from.id);
+        });
+      }
+    });
+  }
+
   if (session.finished) {
     return ctx.reply("Ya completaste el Drop. Gracias por participar. 🤝");
   }
@@ -657,7 +661,6 @@ bot.action("start_drop", function(ctx) {
     session.started = true;
     session.current = 0;
 
-    // Esperar a que Supabase confirme usuario y drop ANTES de arrancar
     return ctx.reply("🔥 Vamos.").then(function() {
       return new Promise(function(resolve) {
         getOrCreateUser(session.telegram_id, session.username, function(userId, anonymousId) {
@@ -743,6 +746,7 @@ bot.action(/^multi_(.+)$/, function(ctx) {
   });
 });
 
+// Texto libre
 bot.on("text", function(ctx) {
   var session = getSession(ctx);
   if (!session.started || session.finished) return;
@@ -750,6 +754,43 @@ bot.on("text", function(ctx) {
   session.awaitingText = false;
   var text = ctx.message.text.substring(0, 500);
   return processResponse(ctx, session, text);
+});
+
+// Audio — se graba file_id y se marca como audio
+bot.on("voice", function(ctx) {
+  var session = getSession(ctx);
+  if (!session.started || session.finished) return;
+  if (!session.awaitingText && !session.awaitingMedia) return;
+  session.awaitingText = false;
+  session.awaitingMedia = false;
+  var fileId = ctx.message.voice.file_id;
+  var duration = ctx.message.voice.duration;
+  return processResponse(ctx, session, "[audio:" + duration + "s]", { file_id: fileId, type: "audio" });
+});
+
+// Sticker — se graba emoji y file_id
+bot.on("sticker", function(ctx) {
+  var session = getSession(ctx);
+  if (!session.started || session.finished) return;
+  if (!session.awaitingText && !session.awaitingMedia) return;
+  session.awaitingText = false;
+  session.awaitingMedia = false;
+  var sticker = ctx.message.sticker;
+  var emoji = sticker.emoji || "🎭";
+  var fileId = sticker.file_id;
+  return processResponse(ctx, session, "[sticker:" + emoji + "]", { file_id: fileId, type: "sticker" });
+});
+
+// Imagen
+bot.on("photo", function(ctx) {
+  var session = getSession(ctx);
+  if (!session.started || session.finished) return;
+  if (!session.awaitingText && !session.awaitingMedia) return;
+  session.awaitingText = false;
+  session.awaitingMedia = false;
+  var photos = ctx.message.photo;
+  var fileId = photos[photos.length - 1].file_id; // mayor resolución
+  return processResponse(ctx, session, "[imagen]", { file_id: fileId, type: "image" });
 });
 
 bot.command("reset", function(ctx) {
