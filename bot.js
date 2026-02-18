@@ -757,6 +757,28 @@ bot.command("reset", function(ctx) {
   return ctx.reply("🔄 Reseteado. Mandá /start para arrancar de nuevo.");
 });
 
+bot.command("forcestart", function(ctx) {
+  delete sessions[ctx.from.id];
+  var session = getSession(ctx);
+  session.started = true;
+  session.current = 0;
+
+  return ctx.reply("🔥 Force start. Vamos.").then(function() {
+    return new Promise(function(resolve) {
+      getOrCreateUser(session.telegram_id, session.username, function(userId, anonymousId) {
+        session.user_id = userId;
+        session.anonymous_id = anonymousId;
+        getOrCreateActiveDrop(function(dropId) {
+          session.drop_id = dropId;
+          setTimeout(resolve, 300);
+        });
+      });
+    });
+  }).then(function() {
+    return sendInteraction(ctx, session);
+  });
+});
+
 bot.command("status", function(ctx) {
   var session = getSession(ctx);
   if (!session.started) return ctx.reply("No arrancaste todavía. Mandá /start.");
