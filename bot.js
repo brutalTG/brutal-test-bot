@@ -657,36 +657,38 @@ bot.action("start_drop", function(ctx) {
     session.started = true;
     session.current = 0;
 
-    // Obtener o crear usuario en Supabase, luego obtener Drop activo
-    getOrCreateUser(session.telegram_id, session.username, function(userId, anonymousId) {
-      session.user_id = userId;
-      session.anonymous_id = anonymousId;
-      console.log("[SUPABASE] Usuario listo - anonymous_id:", anonymousId);
-
-      getOrCreateActiveDrop(function(dropId) {
-        session.drop_id = dropId;
-        console.log("[SUPABASE] Drop activo:", dropId);
-      });
-    });
-
-    logData({
-      timestamp: new Date().toISOString(),
-      telegram_id: session.telegram_id,
-      username: session.username,
-      anonymous_id: null,
-      drop_id: null,
-      interaction_num: 0,
-      interaction_type: "system",
-      interaction_name: "drop_started",
-      response: "START",
-      latency_ms: 0,
-      cumulative_points: 0,
-      trap_result: "",
-      completed_drop: ""
-    });
-
+    // Esperar a que Supabase confirme usuario y drop ANTES de arrancar
     return ctx.reply("🔥 Vamos.").then(function() {
-      return new Promise(function(resolve) { setTimeout(resolve, 500); });
+      return new Promise(function(resolve) {
+        getOrCreateUser(session.telegram_id, session.username, function(userId, anonymousId) {
+          session.user_id = userId;
+          session.anonymous_id = anonymousId;
+          console.log("[SUPABASE] Usuario listo - anonymous_id:", anonymousId);
+
+          getOrCreateActiveDrop(function(dropId) {
+            session.drop_id = dropId;
+            console.log("[SUPABASE] Drop activo:", dropId);
+
+            logData({
+              timestamp: new Date().toISOString(),
+              telegram_id: session.telegram_id,
+              username: session.username,
+              anonymous_id: anonymousId,
+              drop_id: dropId,
+              interaction_num: 0,
+              interaction_type: "system",
+              interaction_name: "drop_started",
+              response: "START",
+              latency_ms: 0,
+              cumulative_points: 0,
+              trap_result: "",
+              completed_drop: ""
+            });
+
+            setTimeout(resolve, 300);
+          });
+        });
+      });
     }).then(function() {
       return sendInteraction(ctx, session);
     });
