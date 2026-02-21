@@ -1,1 +1,250 @@
-temp
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BRUTAL Drop</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#000;color:#fff;height:100vh;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+        #bg-video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:-3;opacity:.5;pointer-events:none}
+        #splash{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:100;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#000;transition:opacity .5s}
+        #splash.hide{opacity:0;pointer-events:none}
+        .splash-logo{font-family:'Bebas Neue',sans-serif;font-size:72px;letter-spacing:8px;color:#fff;margin-bottom:8px;text-shadow:0 0 40px rgba(232,255,0,.3)}
+        .splash-sub{font-size:13px;letter-spacing:6px;color:#E8FF00;text-transform:uppercase;margin-bottom:60px;opacity:.8}
+        .splash-info{font-size:14px;color:#888;margin-bottom:8px}.splash-info strong{color:#fff}
+        .splash-rules{font-size:12px;color:#555;max-width:280px;text-align:center;line-height:1.5;margin:20px 0 40px}
+        .splash-enter{background:#E8FF00;color:#000;border:none;border-radius:40px;padding:18px 60px;font-size:18px;font-weight:900;letter-spacing:2px;cursor:pointer;text-transform:uppercase;transition:transform .1s}
+        .splash-enter:active{transform:scale(.95)}
+        #floating-hud{position:fixed;top:15px;left:50%;transform:translateX(-50%);width:92%;max-width:380px;z-index:20;background:rgba(30,30,30,.65);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:40px;border:1px solid rgba(255,255,255,.1);box-shadow:0 10px 30px rgba(0,0,0,.6),inset 0 1px 1px rgba(255,255,255,.05);display:none;align-items:center;justify-content:space-between;padding:10px 18px}
+        #floating-hud.visible{display:flex}
+        .hud-side{display:flex;align-items:center;min-width:65px;transition:transform .15s}
+        .cash-side{justify-content:flex-start}.ticket-side{justify-content:flex-end;gap:6px}
+        .hud-val{font-size:17px;font-weight:900;letter-spacing:.5px;background:linear-gradient(180deg,#fff 0%,#d4d4d4 50%,#f4f4f4 100%);-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 2px 4px rgba(0,0,0,.8))}
+        .hud-icon-img{width:26px;height:auto;filter:drop-shadow(0 2px 5px rgba(0,0,0,.6))}
+        .hud-center{flex-grow:1;margin:0 15px;display:flex;align-items:center}
+        .progress-track{display:flex;gap:2px;width:100%;height:8px;background:rgba(0,0,0,.6);border-radius:10px;padding:2px;box-shadow:inset 0 1px 3px rgba(0,0,0,.8)}
+        .step-led{flex:1;background:rgba(255,255,255,.05);border-radius:2px;transition:all .3s}
+        .step-led.active{box-shadow:0 0 8px currentColor}
+        .bump{transform:scale(1.3)}
+        @keyframes slideUp{0%{opacity:0;transform:translateY(30px)}100%{opacity:1;transform:translateY(0)}}
+        @keyframes fadeOut{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.95)}}
+        .anim-in{animation:slideUp .5s cubic-bezier(.16,1,.3,1) forwards;opacity:0}
+        .anim-out{animation:fadeOut .3s cubic-bezier(.16,1,.3,1) forwards}
+        .d1{animation-delay:.05s}.d2{animation-delay:.1s}.d3{animation-delay:.15s}.d4{animation-delay:.2s}
+        #blink-fx{position:fixed;top:0;left:0;width:100vw;height:100vh;display:flex;justify-content:center;align-items:center;font-size:72px;font-weight:900;opacity:0;pointer-events:none;z-index:9999;text-shadow:0 5px 20px rgba(0,0,0,.8)}
+        @keyframes blink{0%{opacity:0;transform:scale(.8)}20%{opacity:1;transform:scale(1.1)}100%{opacity:0;transform:scale(1)}}
+        .blink-g{animation:blink .6s ease-out forwards;color:#4CAF50}.blink-r{animation:blink .6s ease-out forwards;color:#F44336}
+        #card-container{flex-grow:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:90px 20px 40px;text-align:center;width:100%;position:relative;overflow-y:auto;height:100vh}
+        #card-inner{display:flex;flex-direction:column;align-items:center;width:100%;max-width:340px}
+        .cq{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;margin-bottom:25px;line-height:1.2;text-shadow:0 2px 10px rgba(0,0,0,.8)}
+        .cn{font-size:11px;color:#E8FF00;letter-spacing:3px;margin-bottom:10px;opacity:.7}
+        .bc{display:flex;flex-direction:column;gap:12px;width:100%}
+        .tb{background:rgba(34,34,34,.8);backdrop-filter:blur(4px);color:#fff;border:2px solid #555;border-radius:16px;padding:16px;font-size:16px;font-weight:bold;cursor:pointer;transition:all .15s}
+        .tb:active{transform:scale(.95);background:rgba(68,68,68,.9)}
+        .tb.sel{background:#E8FF00!important;color:#000!important;border-color:#E8FF00!important;transform:scale(.95)}
+        .sic{display:flex;flex-direction:column;gap:10px;width:100%;height:50vh}
+        .io{flex:1;position:relative;border-radius:16px;overflow:hidden;cursor:pointer;border:2px solid #555;transition:transform .1s,border-color .1s;background:#111}
+        .io:active{transform:scale(.97)}.io.sel{border-color:#E8FF00}
+        .io img{width:100%;height:100%;object-fit:cover}
+        .il{position:absolute;bottom:0;left:0;width:100%;padding:15px;background:linear-gradient(to top,rgba(0,0,0,.9) 0%,rgba(0,0,0,0) 100%);font-size:16px;font-weight:bold;text-align:left}
+        .slc{width:100%;margin:30px 0}
+        input[type=range]{-webkit-appearance:none;width:100%;height:18px;border-radius:10px;background:linear-gradient(to right,#007AFF,#a64dff,#FF3B30);outline:none}
+        input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:36px;height:36px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.6);border:2px solid #ddd}
+        .sll{display:flex;justify-content:space-between;font-size:14px;color:#ccc;font-weight:bold;margin-top:15px}
+        .sv{font-family:'Bebas Neue',sans-serif;font-size:48px;color:#E8FF00;margin:15px 0}
+        .cb{background:#E8FF00;color:#000;border:none;border-radius:30px;padding:16px 40px;font-size:18px;font-weight:900;cursor:pointer;width:100%;margin-top:20px;transition:transform .1s}
+        .cb:active:not(:disabled){transform:scale(.95)}.cb:disabled{background:rgba(51,51,51,.8);color:#555}
+        input[type=text]{width:100%;padding:15px;background:rgba(34,34,34,.8);border:2px solid #555;border-radius:12px;color:#fff;font-size:18px;text-align:center;margin-bottom:10px}
+        input[type=text]:focus{outline:none;border-color:#E8FF00}input[type=text]::placeholder{color:#555}
+        .rzt{display:flex;flex-direction:column;gap:10px;width:100%;min-height:160px;margin-bottom:15px}
+        .rzb{display:flex;flex-direction:column;gap:10px;width:100%;padding-top:15px;border-top:2px dashed #444}
+        .ri{background:rgba(34,34,34,.8);backdrop-filter:blur(4px);color:#fff;border:2px solid #555;border-radius:12px;padding:16px;font-size:15px;font-weight:bold;cursor:pointer;transition:all .2s}
+        .ri.p0{background:#E8FF00;color:#000;border-color:#E8FF00}
+        .ri.p1{background:rgba(232,255,0,.5);color:#000;border-color:rgba(232,255,0,.6)}
+        .ri.p2{background:rgba(232,255,0,.25);color:#fff;border-color:rgba(232,255,0,.3)}
+        .ri.p3{background:rgba(232,255,0,.1);color:#aaa;border-color:rgba(232,255,0,.15)}
+        .rc{padding:30px;text-align:center}
+        .rt{font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:2px;margin-bottom:20px}
+        .rv{font-family:'Bebas Neue',sans-serif;font-size:60px;color:#4CAF50;margin:10px 0}
+        .rtb{display:flex;align-items:center;justify-content:center;background:rgba(232,255,0,.1);border:1px solid rgba(232,255,0,.4);border-radius:16px;padding:20px;margin:20px 0}
+        .rtv{font-family:'Bebas Neue',sans-serif;font-size:36px;color:#E8FF00;margin-left:12px}
+        .rs{font-size:13px;color:#666;margin-bottom:30px}
+        .rcl{background:#4CAF50;color:#fff;border:none;border-radius:30px;padding:18px 40px;font-size:18px;font-weight:900;cursor:pointer;width:100%;letter-spacing:1px}
+        .rcl:active{transform:scale(.95)}.rcl.sending{background:#555;pointer-events:none}
+    </style>
+</head>
+<body>
+    <video id="bg-video" autoplay loop muted playsinline>
+        <source src="background.mp4" type="video/mp4">
+        <source src="background.MOV" type="video/quicktime">
+    </video>
+    <div id="splash">
+        <div class="splash-logo">BRUTAL</div>
+        <div class="splash-sub">The Insight Club</div>
+        <div class="splash-info"><strong>20</strong> preguntas · <strong>~3 min</strong></div>
+        <div class="splash-info">Ganá <strong>cash</strong> + <strong>golden tickets</strong></div>
+        <div class="splash-rules">Respondé rápido. No hay correctas.<br>Hay trampas. Si caés, perdés tickets.</div>
+        <button class="splash-enter" onclick="initDrop()">ENTRAR</button>
+    </div>
+    <div id="floating-hud">
+        <div class="hud-side cash-side" id="box-cash"><span class="hud-val" id="val-cash">$0.00</span></div>
+        <div class="hud-center"><div class="progress-track" id="pbar"></div></div>
+        <div class="hud-side ticket-side" id="box-tix">
+            <span class="hud-val" id="val-tix">0</span>
+            <img src="golden_ticket_3d.png" class="hud-icon-img" alt="T">
+        </div>
+    </div>
+    <div id="blink-fx"></div>
+    <div id="card-container"></div>
+
+<script>
+// ============ CONFIG ============
+// API_URL se calcula automático: misma URL que sirvió esta página
+const API_URL = window.location.origin;
+
+// ============ DROP DATA ============
+const D=[
+{id:"1",f:"split_image",t:"culture",q:"¿Cuál scrolleás más?",o:[{id:"curado",img:"c1_curado.jpg",l:"Fotos perfectas, filtros, curado"},{id:"crudo",img:"c1_crudo.jpg",l:"Flash, borrosas, crudo"}],r:{t:"tickets",m:10}},
+{id:"2",f:"rank",t:"culture",q:"Ordená de MÁS REAL a MÁS ACTUADO.",o:[{id:"1",l:"Bizarrap en entrevista"},{id:"2",l:"Milei en cadena nacional"},{id:"3",l:"Tu mejor amigo en stories"},{id:"4",l:"Publicidad de Mercado Libre"}],r:{t:"cash",m:.20}},
+{id:"3",f:"split_image",t:"brand",q:"¿Cuál te hace confiar más en YPF?",o:[{id:"inst",img:"c3_ypf_inst.jpg",l:"Institucional"},{id:"raw",img:"c3_ypf_raw.jpg",l:"Raw (playero con celular)"}],r:{t:"tickets",m:15}},
+{id:"4",f:"multi_select",t:"culture",q:"¿Qué hacés cuando suena reggaetón?",o:[{id:"1",l:"Bailo"},{id:"2",l:"Lo pongo en stories"},{id:"3",l:"Escucho solo/a"},{id:"4",l:"Lo salteo"},{id:"5",l:"Me calienta"},{id:"6",l:"Me da energía"}],r:{t:"tickets",m:20}},
+{id:"5",f:"trap",t:"trap",q:"Esta es fácil. Tocá el SEGUNDO botón.",o:[{id:"1",l:"Primero"},{id:"ok",l:"Segundo"},{id:"3",l:"Tercero"}],tt:"ok",ip:false,r:{t:"tickets",m:10},p:{m:-50}},
+{id:"6",f:"slider",t:"brand",q:"Compraste algo por Mercado Libre a las 2AM. ¿Cuánto te arrepentiste?",c:{min:0,max:10,lb:["Cero","Devuelvo todo"]},r:{t:"tickets",m:10}},
+{id:"7",f:"binary",t:"culture",q:"Un streamer confiesa que su personaje está 100% guionado. ¿Seguís viéndolo?",o:[{id:"a",l:"SÍ"},{id:"b",l:"NO"}],r:{t:"tickets",m:10}},
+{id:"8",f:"binary",t:"culture",q:"¿Quién te convence más para comprar zapatillas?",o:[{id:"a",l:"Atleta profesional"},{id:"b",l:"Pibe de tu barrio"}],r:{t:"tickets",m:10}},
+{id:"9",f:"confesionario",t:"brand",q:"Decí UNA palabra que asocies con YPF.",r:{t:"cash",m:.15}},
+{id:"10",f:"slider",t:"culture",q:"¿Cuánto contenido sexual ves por día en redes SIN BUSCARLO?",c:{min:1,max:5,lb:["Casi nada","Constantemente"]},r:{t:"tickets",m:15}},
+{id:"11",f:"binary",t:"culture",q:"Dos textos sobre economía. ¿Cuál escribió una persona?",o:[{id:"a",l:"Texto A"},{id:"b",l:"Texto B"}],r:{t:"tickets",m:10}},
+{id:"12",f:"trap",t:"trap",q:"¿De qué color es el cielo?",o:[{id:"a",l:"Azul"},{id:"x",l:"Verde"},{id:"c",l:"Depende la hora"},{id:"d",l:"No tiene color"}],tt:"x",ip:true,r:{t:"tickets",m:10},p:{m:-50}},
+{id:"13",f:"binary",t:"brand",q:"Mercado Libre te ofrece elegir:",o:[{id:"a",l:"Ver TODO lo que compraron tus amigos"},{id:"b",l:"Que NADIE vea lo que compraste vos"}],r:{t:"tickets",m:15}},
+{id:"14",f:"binary",t:"culture",q:"¿Qué da más miedo?",o:[{id:"a",l:"Que te rechacen en persona"},{id:"b",l:"Que te dejen en visto"}],r:{t:"tickets",m:10}},
+{id:"15",f:"confesionario",t:"culture",q:"¿De qué tenés más vergüenza en privado?",r:{t:"cash",m:.20}},
+{id:"16",f:"multi_select",t:"culture",q:"¿Dónde te informás DE VERDAD?",o:[{id:"1",l:"TikTok"},{id:"2",l:"Twitter/X"},{id:"3",l:"Amigos"},{id:"4",l:"Noticieros"},{id:"5",l:"No me informo"},{id:"6",l:"Todo es mentira igual"}],r:{t:"tickets",m:20}},
+{id:"17",f:"binary",t:"culture",q:"Tu Instagram: ¿se parece más a vos o a la versión que querés que vean?",o:[{id:"a",l:"A mí"},{id:"b",l:"A la versión curada"}],r:{t:"tickets",m:10}},
+{id:"18",f:"binary",t:"culture",q:"Elegí UNA cosa para siempre:",o:[{id:"a",l:"Nunca más ver contenido sexual en redes"},{id:"b",l:"Nunca más tener sexo real"}],r:{t:"tickets",m:50}},
+{id:"19",f:"trap_silent",t:"trap",q:"Tocá ROJO",o:[{id:"a",l:"🔴 AZUL"},{id:"b",l:"🔵 ROJO"}],r:{t:"tickets",m:10}},
+{id:"20",f:"binary",t:"culture",q:"¿Preferís una vida real con errores o una vida digital perfecta?",o:[{id:"a",l:"Real con errores"},{id:"b",l:"Digital perfecta"}],r:{t:"cash",m:.50}}
+];
+
+// ============ STATE ============
+let ci=0,cash=0,tix=0,ct=0,dt=0,sid=null,ms=[],ro=[],rs=[],tgUser=null;
+let slStep=-1;
+
+// ============ INIT ============
+window.onload=()=>{
+    if(window.Telegram?.WebApp){const t=window.Telegram.WebApp;t.ready();t.expand();t.setHeaderColor('#000000');t.setBackgroundColor('#000000');if(t.initDataUnsafe?.user)tgUser=t.initDataUnsafe.user}
+};
+
+async function initDrop(){
+    hap();
+    const sp=document.getElementById('splash');sp.classList.add('hide');
+    setTimeout(()=>sp.style.display='none',500);
+    document.getElementById('floating-hud').classList.add('visible');
+    const pb=document.getElementById('pbar');
+    for(let i=0;i<D.length;i++){const l=document.createElement('div');l.className='step-led';pb.appendChild(l)}
+
+    // Start session on server
+    try{
+        const r=await fetch(API_URL+'/api/session/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegram_user:tgUser||{id:0},drop_id:'drop_02',device:{platform:window.Telegram?.WebApp?.platform||'unknown',version:window.Telegram?.WebApp?.version||'unknown'}})});
+        const j=await r.json();
+        if(r.status===409){alert(j.message||'Ya jugaste este Drop');window.Telegram?.WebApp?.close();return}
+        sid=j.session_id;
+    }catch(e){console.error('Session start failed:',e);sid='local_'+Date.now()}
+
+    dt=Date.now();updHUD();render(0);
+}
+
+// ============ HAPTICS ============
+function hap(){window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium')}
+function hapErr(){window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('error')}
+function hapOk(){window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')}
+function hapSl(v,mn,mx){const s=Math.floor((v-mn)/((mx-mn)/20));if(s!==slStep){slStep=s;window.Telegram?.WebApp?.HapticFeedback?.selectionChanged()}}
+
+// ============ DATA CAPTURE ============
+function rec(cardId,fmt,val,trap=null){
+    const lat=Date.now()-ct;
+    const row={session_id:sid,card_id:cardId,card_format:fmt,response_value:val,latency_ms:lat,trap_passed:trap};
+    // Fire and forget — don't block UI
+    if(sid&&!sid.startsWith('local_')){
+        fetch(API_URL+'/api/response',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(row)}).catch(e=>console.error('Save failed:',e));
+    }
+    console.log('REC:',row);
+}
+
+// ============ RENDER ============
+function render(i){
+    ci=i;const c=document.getElementById('card-container');const d=D[i];
+    if(!d){renderReceipt(c);return}
+    ct=Date.now();slStep=-1;
+    const isConf=d.f==='confesionario';
+    document.getElementById('bg-video').style.opacity=isConf?'0':'.5';
+    c.style.background=isConf?'#000':'transparent';
+    let h='<div id="card-inner">';
+    h+='<div class="cn anim-in">'+(i+1)+' / '+D.length+'</div>';
+    h+='<div class="cq anim-in">'+d.q+'</div>';
+    switch(d.f){
+        case 'binary':h+='<div class="bc">';d.o.forEach((o,j)=>{h+='<button class="tb anim-in d'+(j+1)+'" onclick="hBin(\''+d.id+'\',\''+o.id+'\',this,\''+d.r.t+'\','+d.r.m+')">'+o.l+'</button>'});h+='</div>';break;
+        case 'multi_select':ms=[];h+='<div class="bc">';d.o.forEach((o,j)=>{h+='<button id="ms-'+o.id+'" class="tb anim-in d'+Math.min(j+1,4)+'" onclick="tMS(\''+o.id+'\')">'+o.l+'</button>'});h+='</div><button id="msc" class="cb anim-in d4" disabled onclick="hMS(\''+d.id+'\',\''+d.r.t+'\','+d.r.m+')">Confirmar</button>';break;
+        case 'slider':const mid=Math.round((d.c.max+d.c.min)/2);h+='<div class="slc anim-in d1"><div class="sv" id="svd">'+mid+'</div><input type="range" id="sli" min="'+d.c.min+'" max="'+d.c.max+'" value="'+mid+'" step="1" oninput="updSl(this.value,'+d.c.min+','+d.c.max+')"><div class="sll"><span>'+d.c.lb[0]+'</span><span>'+d.c.lb[1]+'</span></div></div><button class="cb anim-in d2" onclick="hSl(\''+d.id+'\',\''+d.r.t+'\','+d.r.m+')">Confirmar</button>';break;
+        case 'split_image':h+='<div class="sic anim-in d1">';d.o.forEach(o=>{h+='<div class="io" onclick="hImg(\''+d.id+'\',\''+o.id+'\',this,\''+d.r.t+'\','+d.r.m+')"><img src="'+o.img+'" loading="eager"><div class="il">'+o.l+'</div></div>'});h+='</div>';break;
+        case 'rank':ro=[...d.o];rs=[];h+='<div class="rzt anim-in d1" id="rkt"></div><div class="rzb anim-in d2" id="rkb"></div><button id="rkc" class="cb anim-in d3" disabled onclick="hRk(\''+d.id+'\',\''+d.r.t+'\','+d.r.m+')">Confirmar Orden</button>';break;
+        case 'trap':h+='<div class="bc">';d.o.forEach((o,j)=>{h+='<button class="tb anim-in d'+(j+1)+'" onclick="hTrap(\''+d.id+'\',\''+o.id+'\',\''+d.tt+'\','+d.ip+','+d.r.m+','+d.p.m+')">'+o.l+'</button>'});h+='</div>';break;
+        case 'trap_silent':h+='<div class="bc">';d.o.forEach((o,j)=>{h+='<button class="tb anim-in d'+(j+1)+'" onclick="hTS(\''+d.id+'\',\''+o.id+'\',\''+d.r.t+'\','+d.r.m+')">'+o.l+'</button>'});h+='</div>';break;
+        case 'confesionario':h+='<input type="text" class="anim-in d1" id="cinp" placeholder="Escribí acá..." autocomplete="off" maxlength="100"><button class="cb anim-in d2" onclick="hConf(\''+d.id+'\',\''+d.r.t+'\','+d.r.m+')">Enviar</button>';break;
+    }
+    h+='</div>';c.innerHTML=h;void c.offsetWidth;
+    if(d.f==='rank')updRk();
+    if(d.f==='confesionario')setTimeout(()=>document.getElementById('cinp')?.focus(),600);
+}
+
+// ============ HANDLERS ============
+function hBin(cid,oid,btn,rt,rm){hap();btn.classList.add('sel');rec(cid,'binary',oid);reward(rt,rm);adv(600)}
+function hImg(cid,oid,el,rt,rm){hap();el.classList.add('sel');rec(cid,'split_image',oid);reward(rt,rm);adv(600)}
+function tMS(id){hap();const b=document.getElementById('ms-'+id);if(ms.includes(id)){ms=ms.filter(x=>x!==id);b.classList.remove('sel')}else{ms.push(id);b.classList.add('sel')}document.getElementById('msc').disabled=ms.length===0}
+function hMS(cid,rt,rm){hap();rec(cid,'multi_select',[...ms]);reward(rt,rm);adv(500)}
+function updSl(v,mn,mx){document.getElementById('svd').textContent=v;hapSl(v,mn,mx)}
+function hSl(cid,rt,rm){hap();rec(cid,'slider',parseInt(document.getElementById('sli').value));reward(rt,rm);adv(500)}
+function hRk(cid,rt,rm){hap();rec(cid,'rank',rs.map(o=>o.id));reward(rt,rm);adv(500)}
+function hTrap(cid,sel,tgt,isP,rm,pm){let ok=isP?(sel!==tgt):(sel===tgt);rec(cid,'trap',sel,ok);if(ok){hap();reward('tickets',rm);adv(600)}else{hapErr();tix+=pm;updHUD();blink(pm,'tickets',false);adv(700)}}
+function hTS(cid,sel,rt,rm){hap();rec(cid,'trap_silent',sel,null);reward(rt,rm);adv(600)}
+function hConf(cid,rt,rm){const inp=document.getElementById('cinp');const v=inp.value.trim();if(!v){inp.style.borderColor='#F44336';return}hap();rec(cid,'confesionario',v);reward(rt,rm);adv(500)}
+
+// ============ RANKING ============
+function tapRk(id){hap();if(rs.find(s=>s.id===id))rs=rs.filter(s=>s.id!==id);else rs.push(ro.find(o=>o.id===id));updRk()}
+function updRk(){
+    const t=document.getElementById('rkt'),b=document.getElementById('rkb'),c=document.getElementById('rkc');
+    t.innerHTML=rs.map((o,i)=>'<div class="ri p'+i+'" onclick="tapRk(\''+o.id+'\')"> #'+(i+1)+' — '+o.l+'</div>').join('');
+    b.innerHTML=ro.filter(o=>!rs.find(s=>s.id===o.id)).map(o=>'<div class="ri" onclick="tapRk(\''+o.id+'\')">'+o.l+'</div>').join('');
+    c.disabled=rs.length!==ro.length;
+}
+
+// ============ REWARDS & UI ============
+function reward(t,m){if(t==='tickets'){tix+=m;blink(m,'tickets',true);bump('box-tix')}else{cash+=m;blink(m,'cash',true);bump('box-cash')}updHUD()}
+function adv(dl){led(ci);const inner=document.getElementById('card-inner');if(inner)inner.classList.add('anim-out');setTimeout(()=>render(ci+1),dl)}
+function updHUD(){document.getElementById('val-cash').textContent='$'+cash.toFixed(2);document.getElementById('val-tix').textContent=tix}
+function bump(id){const e=document.getElementById(id);e.classList.add('bump');setTimeout(()=>e.classList.remove('bump'),150)}
+function led(i){const l=document.querySelectorAll('.step-led');if(!l[i])return;const h=240-(i/(D.length-1)*240);const c='hsl('+h+',100%,50%)';l[i].classList.add('active');l[i].style.backgroundColor=c;l[i].style.color=c}
+function blink(m,t,pos){const f=document.getElementById('blink-fx');let tx=t==='cash'?(pos?'+$'+m.toFixed(2):'-$'+Math.abs(m).toFixed(2)):(pos?'+'+m:''+m);f.innerHTML=t==='tickets'?'<span style="display:flex;align-items:center;gap:10px">'+tx+' <img src="golden_ticket_3d.png" style="width:50px"></span>':tx;f.classList.remove('blink-g','blink-r');void f.offsetWidth;f.classList.add(pos?'blink-g':'blink-r')}
+
+// ============ RECEIPT ============
+function renderReceipt(c){
+    document.getElementById('floating-hud').style.display='none';
+    document.getElementById('bg-video').style.opacity='.3';
+    const dur=Math.round((Date.now()-dt)/1000);const min=Math.floor(dur/60);const sec=dur%60;
+    c.innerHTML='<div class="rc anim-in"><div class="rt">DROP COMPLETADO</div><div class="rv">$'+cash.toFixed(2)+'</div><div class="rtb"><img src="golden_ticket_3d.png" style="width:40px"><div class="rtv">'+tix+' tickets</div></div><div class="rs">Tiempo: '+min+'m '+sec+'s</div><button class="rcl" id="clbtn" onclick="finish()">RECLAMAR TODO</button></div>';
+}
+async function finish(){
+    const btn=document.getElementById('clbtn');btn.textContent='ENVIANDO...';btn.classList.add('sending');
+    if(sid&&!sid.startsWith('local_')){
+        try{await fetch(API_URL+'/api/session/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid,totals:{cash,tickets:tix,trap_score:0,trap_total:0,duration_ms:Date.now()-dt}})})}catch(e){console.error(e)}
+    }
+    hapOk();btn.textContent='✓ RECLAMADO';btn.style.background='#E8FF00';btn.style.color='#000';
+    setTimeout(()=>{window.Telegram?.WebApp?.close()},1200);
+}
+</script>
+</body>
+</html>
