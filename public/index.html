@@ -19,6 +19,9 @@
         .splash-rules{font-size:12px;color:#555;max-width:280px;text-align:center;line-height:1.5;margin:20px 0 40px}
         .splash-enter{background:#E8FF00;color:#000;border:none;border-radius:40px;padding:18px 60px;font-size:18px;font-weight:900;letter-spacing:2px;cursor:pointer;text-transform:uppercase;transition:transform .1s}
         .splash-enter:active{transform:scale(.95)}
+        .splash-enter:disabled{background:#555;color:#333;cursor:not-allowed}
+        #loading-msg{font-size:12px;color:#555;margin-top:15px;letter-spacing:2px}
+        #error-msg{font-size:14px;color:#F44336;margin-top:20px;text-align:center;max-width:280px;display:none}
         #floating-hud{position:fixed;top:15px;left:50%;transform:translateX(-50%);width:92%;max-width:380px;z-index:20;background:rgba(30,30,30,.65);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:40px;border:1px solid rgba(255,255,255,.1);box-shadow:0 10px 30px rgba(0,0,0,.6),inset 0 1px 1px rgba(255,255,255,.05);display:none;align-items:center;justify-content:space-between;padding:10px 18px}
         #floating-hud.visible{display:flex}
         .hud-side{display:flex;align-items:center;min-width:65px;transition:transform .15s}
@@ -83,12 +86,14 @@
         <source src="background.MOV" type="video/quicktime">
     </video>
     <div id="splash">
-        <div class="splash-logo">BRUTAL</div>
-        <div class="splash-sub">The Insight Club</div>
-        <div class="splash-info"><strong>20</strong> preguntas · <strong>~3 min</strong></div>
-        <div class="splash-info">Ganá <strong>cash</strong> + <strong>golden tickets</strong></div>
-        <div class="splash-rules">Respondé rápido. No hay correctas.<br>Hay trampas. Si caés, perdés tickets.</div>
-        <button class="splash-enter" onclick="initDrop()">ENTRAR</button>
+        <div class="splash-logo" id="splash-title">BRUTAL</div>
+        <div class="splash-sub" id="splash-subtitle">The Insight Club</div>
+        <div class="splash-info" id="splash-info"><strong>20</strong> preguntas · <strong>~3 min</strong></div>
+        <div class="splash-info" id="splash-reward">Ganá <strong>cash</strong> + <strong>golden tickets</strong></div>
+        <div class="splash-rules" id="splash-rules">Respondé rápido. No hay correctas.<br>Hay trampas. Si caés, perdés tickets.</div>
+        <div id="loading-msg">CARGANDO DROP...</div>
+        <button class="splash-enter" id="enter-btn" onclick="initDrop()" disabled>ENTRAR</button>
+        <div id="error-msg"></div>
     </div>
     <div id="floating-hud">
         <div class="hud-side cash-side" id="box-cash"><span class="hud-val" id="val-cash">$0.00</span></div>
@@ -103,43 +108,71 @@
 
 <script>
 // ============ CONFIG ============
-// API_URL se calcula automático: misma URL que sirvió esta página
 const API_URL = window.location.origin;
 
-// ============ DROP DATA ============
-const D=[
-{id:"1",f:"split_image",t:"culture",q:"¿Cuál scrolleás más?",o:[{id:"curado",img:"c1_curado.jpg",l:"Fotos perfectas, filtros, curado"},{id:"crudo",img:"c1_crudo.jpg",l:"Flash, borrosas, crudo"}],r:{t:"tickets",m:10}},
-{id:"2",f:"rank",t:"culture",q:"Ordená de MÁS REAL a MÁS ACTUADO.",o:[{id:"1",l:"Bizarrap en entrevista"},{id:"2",l:"Milei en cadena nacional"},{id:"3",l:"Tu mejor amigo en stories"},{id:"4",l:"Publicidad de Mercado Libre"}],r:{t:"cash",m:.20}},
-{id:"3",f:"split_image",t:"brand",q:"¿Cuál te hace confiar más en YPF?",o:[{id:"inst",img:"c3_ypf_inst.jpg",l:"Institucional"},{id:"raw",img:"c3_ypf_raw.jpg",l:"Raw (playero con celular)"}],r:{t:"tickets",m:15}},
-{id:"4",f:"multi_select",t:"culture",q:"¿Qué hacés cuando suena reggaetón?",o:[{id:"1",l:"Bailo"},{id:"2",l:"Lo pongo en stories"},{id:"3",l:"Escucho solo/a"},{id:"4",l:"Lo salteo"},{id:"5",l:"Me calienta"},{id:"6",l:"Me da energía"}],r:{t:"tickets",m:20}},
-{id:"5",f:"trap",t:"trap",q:"Esta es fácil. Tocá el SEGUNDO botón.",o:[{id:"1",l:"Primero"},{id:"ok",l:"Segundo"},{id:"3",l:"Tercero"}],tt:"ok",ip:false,r:{t:"tickets",m:10},p:{m:-50}},
-{id:"6",f:"slider",t:"brand",q:"Compraste algo por Mercado Libre a las 2AM. ¿Cuánto te arrepentiste?",c:{min:0,max:10,lb:["Cero","Devuelvo todo"]},r:{t:"tickets",m:10}},
-{id:"7",f:"binary",t:"culture",q:"Un streamer confiesa que su personaje está 100% guionado. ¿Seguís viéndolo?",o:[{id:"a",l:"SÍ"},{id:"b",l:"NO"}],r:{t:"tickets",m:10}},
-{id:"8",f:"binary",t:"culture",q:"¿Quién te convence más para comprar zapatillas?",o:[{id:"a",l:"Atleta profesional"},{id:"b",l:"Pibe de tu barrio"}],r:{t:"tickets",m:10}},
-{id:"9",f:"confesionario",t:"brand",q:"Decí UNA palabra que asocies con YPF.",r:{t:"cash",m:.15}},
-{id:"10",f:"slider",t:"culture",q:"¿Cuánto contenido sexual ves por día en redes SIN BUSCARLO?",c:{min:1,max:5,lb:["Casi nada","Constantemente"]},r:{t:"tickets",m:15}},
-{id:"11",f:"binary",t:"culture",q:"Dos textos sobre economía. ¿Cuál escribió una persona?",o:[{id:"a",l:"Texto A"},{id:"b",l:"Texto B"}],r:{t:"tickets",m:10}},
-{id:"12",f:"trap",t:"trap",q:"¿De qué color es el cielo?",o:[{id:"a",l:"Azul"},{id:"x",l:"Verde"},{id:"c",l:"Depende la hora"},{id:"d",l:"No tiene color"}],tt:"x",ip:true,r:{t:"tickets",m:10},p:{m:-50}},
-{id:"13",f:"binary",t:"brand",q:"Mercado Libre te ofrece elegir:",o:[{id:"a",l:"Ver TODO lo que compraron tus amigos"},{id:"b",l:"Que NADIE vea lo que compraste vos"}],r:{t:"tickets",m:15}},
-{id:"14",f:"binary",t:"culture",q:"¿Qué da más miedo?",o:[{id:"a",l:"Que te rechacen en persona"},{id:"b",l:"Que te dejen en visto"}],r:{t:"tickets",m:10}},
-{id:"15",f:"confesionario",t:"culture",q:"¿De qué tenés más vergüenza en privado?",r:{t:"cash",m:.20}},
-{id:"16",f:"multi_select",t:"culture",q:"¿Dónde te informás DE VERDAD?",o:[{id:"1",l:"TikTok"},{id:"2",l:"Twitter/X"},{id:"3",l:"Amigos"},{id:"4",l:"Noticieros"},{id:"5",l:"No me informo"},{id:"6",l:"Todo es mentira igual"}],r:{t:"tickets",m:20}},
-{id:"17",f:"binary",t:"culture",q:"Tu Instagram: ¿se parece más a vos o a la versión que querés que vean?",o:[{id:"a",l:"A mí"},{id:"b",l:"A la versión curada"}],r:{t:"tickets",m:10}},
-{id:"18",f:"binary",t:"culture",q:"Elegí UNA cosa para siempre:",o:[{id:"a",l:"Nunca más ver contenido sexual en redes"},{id:"b",l:"Nunca más tener sexo real"}],r:{t:"tickets",m:50}},
-{id:"19",f:"trap_silent",t:"trap",q:"Tocá ROJO",o:[{id:"a",l:"🔴 AZUL"},{id:"b",l:"🔵 ROJO"}],r:{t:"tickets",m:10}},
-{id:"20",f:"binary",t:"culture",q:"¿Preferís una vida real con errores o una vida digital perfecta?",o:[{id:"a",l:"Real con errores"},{id:"b",l:"Digital perfecta"}],r:{t:"cash",m:.50}}
-];
+// ============ DROP DATA — AHORA SE CARGA DESDE EL SERVIDOR ============
+let D = [];           // se llena con las cards del Drop activo
+let DROP_ID = null;   // slug del Drop activo (ej: "drop_02")
 
 // ============ STATE ============
 let ci=0,cash=0,tix=0,ct=0,dt=0,sid=null,ms=[],ro=[],rs=[],tgUser=null;
 let slStep=-1;
 
 // ============ INIT ============
-window.onload=()=>{
-    if(window.Telegram?.WebApp){const t=window.Telegram.WebApp;t.ready();t.expand();t.setHeaderColor('#000000');t.setBackgroundColor('#000000');if(t.initDataUnsafe?.user)tgUser=t.initDataUnsafe.user}
+window.onload = async () => {
+    // 1. Inicializar Telegram WebApp
+    if (window.Telegram?.WebApp) {
+        const t = window.Telegram.WebApp;
+        t.ready();
+        t.expand();
+        t.setHeaderColor('#000000');
+        t.setBackgroundColor('#000000');
+        if (t.initDataUnsafe?.user) tgUser = t.initDataUnsafe.user;
+    }
+
+    // 2. Cargar el Drop activo desde el servidor
+    try {
+        const res = await fetch(API_URL + '/api/drop/active');
+
+        if (!res.ok) {
+            throw new Error('No hay Drop activo');
+        }
+
+        const data = await res.json();
+
+        // Guardar las cards y el drop_id
+        D = data.cards;
+        DROP_ID = data.drop_id;
+
+        // Actualizar splash con datos del drop (si vienen)
+        if (data.splash) {
+            const s = data.splash;
+            if (s.title) document.getElementById('splash-title').textContent = s.title;
+            if (s.subtitle) document.getElementById('splash-subtitle').textContent = s.subtitle;
+            if (s.rules) document.getElementById('splash-rules').innerHTML = s.rules;
+            if (s.button) document.getElementById('enter-btn').textContent = s.button;
+        }
+
+        // Actualizar info con cantidad real de cards
+        document.getElementById('splash-info').innerHTML =
+            '<strong>' + D.length + '</strong> preguntas · <strong>~3 min</strong>';
+
+        // Habilitar el botón
+        document.getElementById('loading-msg').style.display = 'none';
+        document.getElementById('enter-btn').disabled = false;
+
+    } catch (err) {
+        console.error('Failed to load drop:', err);
+        document.getElementById('loading-msg').style.display = 'none';
+        document.getElementById('error-msg').style.display = 'block';
+        document.getElementById('error-msg').textContent =
+            'No hay Drop activo en este momento. Volvé pronto.';
+    }
 };
 
 async function initDrop(){
+    if (D.length === 0) return; // por seguridad
+
     hap();
     const sp=document.getElementById('splash');sp.classList.add('hide');
     setTimeout(()=>sp.style.display='none',500);
@@ -147,9 +180,9 @@ async function initDrop(){
     const pb=document.getElementById('pbar');
     for(let i=0;i<D.length;i++){const l=document.createElement('div');l.className='step-led';pb.appendChild(l)}
 
-    // Start session on server
+    // Start session on server — usa el DROP_ID dinámico
     try{
-        const r=await fetch(API_URL+'/api/session/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegram_user:tgUser||{id:0},drop_id:'drop_02',device:{platform:window.Telegram?.WebApp?.platform||'unknown',version:window.Telegram?.WebApp?.version||'unknown'}})});
+        const r=await fetch(API_URL+'/api/session/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegram_user:tgUser||{id:0},drop_id:DROP_ID||'drop_02',device:{platform:window.Telegram?.WebApp?.platform||'unknown',version:window.Telegram?.WebApp?.version||'unknown'}})});
         const j=await r.json();
         if(r.status===409){alert(j.message||'Ya jugaste este Drop');window.Telegram?.WebApp?.close();return}
         sid=j.session_id;
@@ -168,7 +201,6 @@ function hapSl(v,mn,mx){const s=Math.floor((v-mn)/((mx-mn)/20));if(s!==slStep){s
 function rec(cardId,fmt,val,trap=null){
     const lat=Date.now()-ct;
     const row={session_id:sid,card_id:cardId,card_format:fmt,response_value:val,latency_ms:lat,trap_passed:trap};
-    // Fire and forget — don't block UI
     if(sid&&!sid.startsWith('local_')){
         fetch(API_URL+'/api/response',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(row)}).catch(e=>console.error('Save failed:',e));
     }
