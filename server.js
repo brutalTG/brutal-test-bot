@@ -13,7 +13,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEBAPP_URL = process.env.WEBAPP_URL || `http://localhost:${PORT}`;
-const ADMIN_IDS = []; // Poné tu Telegram User ID acá, ej: [123456789]
+const ADMIN_IDS = [6949935917];
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error('ERROR: Faltan SUPABASE_URL o SUPABASE_KEY');
@@ -423,6 +423,62 @@ bot.onText(/\/reset_leaderboard/, async (msg) => {
         .gt('drops_completed', 0);
 
     bot.sendMessage(msg.chat.id, '✅ Leaderboard reseteado.');
+});
+
+bot.onText(/\/replay/, async (msg) => {
+    const chatId = msg.chat.id;
+    const tgId = msg.from.id;
+
+    if (!ADMIN_IDS.includes(tgId)) {
+        return bot.sendMessage(chatId, 'No tenés permiso.');
+    }
+
+    // Buscar el user en Supabase
+    const { data: user } = await supabase
+        .from('users')
+        .select('id')
+        .eq('telegram_id', tgId)
+        .single();
+
+    if (!user) {
+        return bot.sendMessage(chatId, 'No se encontró tu usuario.');
+    }
+
+    // Buscar el drop activo
+    const { data: activeDrop } = await supabase
+        .from('drops')
+        .select('slug')
+        .eq('status', 'active')
+        .limit(1)
+        .single();
+
+    if (!activeDrop) {
+        return bot.sendMessage(chatId, 'No hay Drop activo.');
+    }
+
+    // Borrar sesiones de este usuario para este drop
+    const { error } = await supabase
+        .from('drop_sessions')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('drop_id', activeDrop.slug);
+
+    if (error) {
+        console.error('Replay delete error:', error);
+        return bot.sendMessage(chatId, 'Error al resetear. Revisá los logs.');
+    }
+
+    bot.sendMessage(chatId,
+        `✅ Sesión borrada para *${activeDrop.slug}*. Podés volver a jugarlo.`,
+        {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [[
+                    { text: '⚡ JUGAR DE NUEVO', web_app: { url: WEBAPP_URL + '/index.html' } }
+                ]]
+            }
+        }
+    );
 });
 
 // ================================================================
