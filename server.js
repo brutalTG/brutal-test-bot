@@ -392,6 +392,92 @@ app.get('/api/admin/responses/:drop_id', checkAdmin, async (req, res) => {
     }
 });
 
+// Exportar respuestas anonimizadas de un drop (para análisis con Claude)
+app.get('/api/admin/export/:drop_id', checkAdmin, async (req, res) => {
+    try {
+        const dropId = req.params.drop_id;
+
+        // 1. Obtener el drop con sus cards
+        const { data: drop } = await supabase
+            .from('drops')
+            .select('slug, title, subtitle, cards_json')
+            .eq('slug', dropId)
+            .single();
+
+        // 2. Obtener sesiones completadas
+        const { data: sessions } = await supabase
+            .from('drop_sessions')
+            .select('id, user_id, started_at, completed_at, total_cash, total_tickets, trap_score, trap_total')
+            .eq('drop_id', dropId)
+            .not('completed_at', 'is', null)
+            .order('started_at', { ascending: true });
+
+        if (!sessions || sessions.length === 0) {
+            return res.status(404).json({ error: 'No hay sesiones completadas para este drop' });
+        }
+
+        // 3. Obtener responses
+        const sessionIds = sessions.map(s => s.id);
+        const { data: responses } = await supabase
+            .from('responses')
+            .select('session_id, card_id, card_format, response_value, latency_ms, trap_passed')
+            .in('session_id', sessionIds);
+
+        // 4. Crear hashes anónimos para usuarios (user_01, user_02, etc.)
+        const userIds = [...new Set(sessions.map(s => s.user_id))];
+        const userMap = {};
+        userIds.forEach((uid, i) => {
+            userMap[uid] = 'user_' + String(i + 1).padStart(3, '0');
+        });
+
+        // 5. Armar responses por sesión
+        const responsesMap = {};
+        (responses || []).forEach(r => {
+            if (!responsesMap[r.session_id]) responsesMap[r.session_id] = [];
+            responsesMap[r.session_id].push({
+                card_id: r.card_id,
+                card_format: r.card_format,
+                response_value: r.response_value,
+                latency_ms: r.latency_ms,
+                trap_passed: r.trap_passed
+            });
+        });
+
+        // 6. Armar export anonimizado
+        const exportData = {
+            export_date: new Date().toISOString(),
+            drop: {
+                slug: drop?.slug || dropId,
+                title: drop?.title || 'Unknown',
+                subtitle: drop?.subtitle || null,
+                cards: drop?.cards_json || []
+            },
+            summary: {
+                total_sessions: sessions.length,
+                total_unique_users: userIds.length
+            },
+            sessions: sessions.map(s => ({
+                user_hash: userMap[s.user_id],
+                started_at: s.started_at,
+                completed_at: s.completed_at,
+                duration_seconds: s.completed_at && s.started_at
+                    ? Math.round((new Date(s.completed_at) - new Date(s.started_at)) / 1000)
+                    : null,
+                total_cash: s.total_cash,
+                total_tickets: s.total_tickets,
+                trap_score: s.trap_score,
+                trap_total: s.trap_total,
+                responses: (responsesMap[s.id] || []).sort((a, b) => parseInt(a.card_id) - parseInt(b.card_id))
+            }))
+        };
+
+        res.json(exportData);
+    } catch (err) {
+        console.error('Export error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // --- DROPS ---
 
 // Lista de todos los drops
