@@ -345,26 +345,47 @@ app.post('/api/admin/users/:id/status', checkAdmin, async (req, res) => {
 // Respuestas de un drop específico
 app.get('/api/admin/responses/:drop_id', checkAdmin, async (req, res) => {
     try {
-        const { data, error } = await supabase
+        // 1. Obtener sesiones del drop
+        const { data: sessions, error: sessErr } = await supabase
             .from('drop_sessions')
-            .select(`
-                id,
-                user_id,
-                drop_id,
-                started_at,
-                completed_at,
-                total_cash,
-                total_tickets,
-                trap_score,
-                trap_total,
-                users!inner(telegram_id, first_name, username),
-                responses(card_id, card_format, response_value, latency_ms, trap_passed)
-            `)
+            .select('id, user_id, drop_id, started_at, completed_at, total_cash, total_tickets, trap_score, trap_total')
             .eq('drop_id', req.params.drop_id)
             .order('started_at', { ascending: false });
 
-        if (error) throw error;
-        res.json(data || []);
+        if (sessErr) throw sessErr;
+        if (!sessions || sessions.length === 0) return res.json([]);
+
+        // 2. Obtener users de esas sesiones
+        const userIds = [...new Set(sessions.map(s => s.user_id))];
+        const { data: users } = await supabase
+            .from('users')
+            .select('id, telegram_id, first_name, username')
+            .in('id', userIds);
+
+        const usersMap = {};
+        (users || []).forEach(u => { usersMap[u.id] = u; });
+
+        // 3. Obtener responses de esas sesiones
+        const sessionIds = sessions.map(s => s.id);
+        const { data: responses } = await supabase
+            .from('responses')
+            .select('session_id, card_id, card_format, response_value, latency_ms, trap_passed')
+            .in('session_id', sessionIds);
+
+        const responsesMap = {};
+        (responses || []).forEach(r => {
+            if (!responsesMap[r.session_id]) responsesMap[r.session_id] = [];
+            responsesMap[r.session_id].push(r);
+        });
+
+        // 4. Combinar
+        const result = sessions.map(s => ({
+            ...s,
+            users: usersMap[s.user_id] || { telegram_id: null, first_name: 'Desconocido', username: null },
+            responses: responsesMap[s.id] || []
+        }));
+
+        res.json(result);
     } catch (err) {
         console.error('Admin responses error:', err);
         res.status(500).json({ error: 'Internal server error' });
