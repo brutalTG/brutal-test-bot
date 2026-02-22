@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BRUTAL ADMIN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #000;
+      --surface: #111;
+      --border: #333;
+      --text: #fff;
+      --muted: #888;
+      --accent: #E8FF00;
+      --success: #4CAF50;
+      --error: #F44336;
+      --warning: #FF9800;
+      --hover: #1a1a1a;
+      --mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      --ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--ui);
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* AUTH SCREEN */
+    #auth-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 20px;
+    }
+
+    #auth-screen h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 64px;
+      color: var(--accent);
+      letter-spacing: 4px;
+    }
+
+    #auth-screen p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    #auth-input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 16px;
+      padding: 12px 20px;
+      width: 340px;
+      outline: none;
+      letter-spacing: 2px;
+    }
+
+    #auth-input:focus { border-color: var(--accent); }
+
+    #auth-error {
+      color: var(--error);
+      font-size: 13px;
+      min-height: 20px;
+    }
+
+    /* MAIN APP */
+    #app { display: none; }
+
+    /* HEADER */
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #000;
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+      display: flex;
+      align-items: stretch;
+      height: 56px;
+    }
+
+    .header-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      color: var(--accent);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      letter-spacing: 3px;
+      border-right: 1px solid var(--border);
+      min-width: 200px;
+    }
+
+    .tabs {
+      display: flex;
+      align-items: stretch;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: var(--ui);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      padding: 0 24px;
+      text-transform: uppercase;
+      transition: color 0.15s;
+    }
+
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+    }
+
+    .logout-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 11px;
+      padding: 6px 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .logout-btn:hover { border-color: var(--text); color: var(--text); }
+
+    /* CONTENT */
+    #content {
+      margin-top: 56px;
+      padding: 28px;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* TOAST */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      background: var(--success);
+      color: #000;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 12px 20px;
+      letter-spacing: 1px;
+      z-index: 999;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.error { background: var(--error); color: #fff; }
+
+    /* STATS ROW */
+    .stats-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 16px 20px;
+      flex: 1;
+    }
+
+    .stat-card .stat-label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .stat-card .stat-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 36px;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    /* CONTROLS ROW */
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    /* FILTER BTNS */
+    .filter-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 6px 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .filter-btn:hover { border-color: var(--text); color: var(--text); }
+    .filter-btn.active { border-color: var(--accent); color: var(--accent); }
+
+    /* TABLES */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      background: #0a0a0a;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      padding: 10px 14px;
+      text-align: left;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr { border-bottom: 1px solid #1a1a1a; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:nth-child(even) { background: #080808; }
+    tbody tr:hover { background: var(--hover); }
+
+    td {
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+
+    .empty-row td {
+      color: var(--muted);
+      text-align: center;
+      padding: 32px;
+      font-family: var(--ui);
+    }
+
+    /* BADGES */
+    .badge {
+      border: 1px solid;
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 2px 8px;
+      text-transform: uppercase;
+    }
+
+    .badge-approved { border-color: var(--success); color: var(--success); }
+    .badge-pending { border-color: var(--warning); color: var(--warning); }
+    .badge-rejected { border-color: var(--error); color: var(--error); }
+    .badge-active { border-color: var(--accent); color: var(--accent); }
+    .badge-draft { border-color: var(--muted); color: var(--muted); }
+    .badge-inactive { border-color: var(--border); color: var(--muted); }
+
+    /* ACTION BUTTONS */
+    .btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 12px;
+      font-family: var(--ui);
+      padding: 5px 10px;
+      transition: background 0.1s;
+    }
+
+    .btn:hover { background: var(--hover); }
+    .btn-approve { border-color: var(--success); color: var(--success); }
+    .btn-approve:hover { background: rgba(76,175,80,0.1); }
+    .btn-reject { border-color: var(--error); color: var(--error); }
+    .btn-reject:hover { background: rgba(244,67,54,0.1); }
+    .btn-accent { border-color: var(--accent); color: var(--accent); }
+    .btn-accent:hover { background: rgba(232,255,0,0.08); }
+
+    .btn-group { display: flex; gap: 6px; }
+
+    /* INPUTS */
+    input[type="text"], textarea, select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--ui);
+      font-size: 13px;
+      outline: none;
+      padding: 8px 12px;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus,
+    select:focus { border-color: var(--accent); }
+
+    textarea {
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+      resize: vertical;
+      width: 100%;
+    }
+
+    /* LOADING */
+    .loading {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 32px;
+      text-align: center;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* SECTION HEADER */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 24px;
+      letter-spacing: 2px;
+      color: var(--text);
+    }
+
+    /* LATENCY COLORS */
+    .lat-fast { color: var(--success); }
+    .lat-mid { color: var(--text); }
+    .lat-slow { color: var(--error); }
+
+    /* EXPANDED RESPONSES */
+    .responses-expanded td {
+      background: #0d0d0d !important;
+      padding: 0 !important;
+    }
+
+    .responses-inner {
+      padding: 12px 28px;
+      border-top: 1px solid #222;
+    }
+
+    .responses-inner table { margin-top: 8px; }
+    .responses-inner thead th { background: #111; }
+
+    /* DROP EDITOR */
+    #drop-editor {
+      display: none;
+      border: 1px solid var(--accent);
+      padding: 24px;
+      margin-top: 24px;
+    }
+
+    .editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      color: var(--muted);
+      display: block;
+      font-size: 11px;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .form-group input[type="text"] { width: 100%; }
+
+    .editor-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+    .json-meta {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 6px;
+      font-family: var(--mono);
+    }
+
+    /* NEW DROP FORM */
+    #new-drop-form {
+      display: none;
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    /* LIVE PANEL */
+    .live-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .live-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 24px;
+    }
+
+    .live-card .label {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .live-card .value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 48px;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .live-card .sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 6px;
+      font-family: var(--mono);
+    }
+
+    /* DIVIDER */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  </style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <h1>BRUTAL</h1>
+  <p>ADMIN ACCESS — INGRESÁ TU CLAVE</p>
+  <input type="password" id="auth-input" placeholder="Admin Key" autocomplete="off" spellcheck="false">
+  <div id="auth-error"></div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <header>
+    <div class="header-title">BRUTAL ADMIN</div>
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="usuarios">USUARIOS</button>
+      <button class="tab-btn" data-tab="respuestas">RESPUESTAS</button>
+      <button class="tab-btn" data-tab="drops">DROPS</button>
+      <button class="tab-btn" data-tab="live">LIVE</button>
+    </nav>
+    <div class="header-right">
+      <button class="logout-btn" onclick="logout()">SALIR</button>
+    </div>
+  </header>
+
+  <div id="content">
+    <!-- TAB: USUARIOS -->
+    <div id="tab-usuarios" class="tab-panel active">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Total</div>
+          <div class="stat-value" id="stat-total">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Aprobados</div>
+          <div class="stat-value" id="stat-approved" style="color:var(--success)">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pendientes</div>
+          <div class="stat-value" id="stat-pending" style="color:var(--warning)">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Rechazados</div>
+          <div class="stat-value" id="stat-rejected" style="color:var(--error)">—</div>
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <span style="color:var(--muted);font-size:11px;letter-spacing:1px;text-transform:uppercase;">FILTRAR:</span>
+        <button class="filter-btn active" data-filter="all" onclick="setUserFilter('all', this)">TODOS</button>
+        <button class="filter-btn" data-filter="approved" onclick="setUserFilter('approved', this)">APROBADOS</button>
+        <button class="filter-btn" data-filter="pending" onclick="setUserFilter('pending', this)">PENDIENTES</button>
+        <button class="filter-btn" data-filter="rejected" onclick="setUserFilter('rejected', this)">RECHAZADOS</button>
+        <button class="btn" style="margin-left:auto" onclick="loadUsers()">↺ RECARGAR</button>
+      </div>
+
+      <div class="table-wrap">
+        <div id="users-loading" class="loading">Cargando usuarios...</div>
+        <table id="users-table" style="display:none">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Telegram ID</th>
+              <th>Estado</th>
+              <th>Drops</th>
+              <th>Cash</th>
+              <th>Tickets</th>
+              <th>Trap Score</th>
+              <th>Registro</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: RESPUESTAS -->
+    <div id="tab-respuestas" class="tab-panel">
+      <div class="controls-row" style="margin-bottom:20px">
+        <span style="color:var(--muted);font-size:11px;letter-spacing:1px;text-transform:uppercase;">DROP ID:</span>
+        <input type="text" id="drop-id-input" value="drop_02" style="width:160px">
+        <button class="btn btn-accent" onclick="loadResponses()">CARGAR</button>
+      </div>
+
+      <div class="table-wrap">
+        <div id="responses-loading" class="loading" style="display:none">Cargando respuestas...</div>
+        <table id="responses-table" style="display:none">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Completado</th>
+              <th>Cash</th>
+              <th>Tickets</th>
+              <th>Trap Score</th>
+              <th>Fecha</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="responses-tbody"></tbody>
+        </table>
+        <div id="responses-empty" style="display:none;padding:32px;text-align:center;color:var(--muted)">No hay datos. Ingresá un drop ID y cargá.</div>
+      </div>
+    </div>
+
+    <!-- TAB: DROPS -->
+    <div id="tab-drops" class="tab-panel">
+      <div class="section-header">
+        <span class="section-title">DROPS</span>
+        <button class="btn btn-accent" onclick="toggleNewDropForm()">+ NUEVO DROP</button>
+        <button class="btn" style="margin-left:auto" onclick="loadDrops()">↺ RECARGAR</button>
+      </div>
+
+      <div id="new-drop-form">
+        <div class="section-title" style="margin-bottom:16px;font-size:18px">NUEVO DROP</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+          <div class="form-group">
+            <label>Slug</label>
+            <input type="text" id="new-slug" placeholder="drop_03">
+          </div>
+          <div class="form-group">
+            <label>Título</label>
+            <input type="text" id="new-title" placeholder="Título del drop">
+          </div>
+          <div class="form-group">
+            <label>Subtítulo</label>
+            <input type="text" id="new-subtitle" placeholder="Subtítulo">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Cards JSON</label>
+          <textarea id="new-cards-json" rows="10" placeholder='[{"id":"1","type":"binary",...}]'></textarea>
+          <div class="json-meta" id="new-json-meta"></div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-accent" onclick="createDrop()">CREAR DROP</button>
+          <button class="btn" onclick="validateJSON('new-cards-json','new-json-meta')">VALIDAR JSON</button>
+          <button class="btn" onclick="toggleNewDropForm()">CANCELAR</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div id="drops-loading" class="loading">Cargando drops...</div>
+        <table id="drops-table" style="display:none">
+          <thead>
+            <tr>
+              <th>Slug</th>
+              <th>Título</th>
+              <th>Estado</th>
+              <th>Cards</th>
+              <th>Sesiones</th>
+              <th>Creado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="drops-tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="drop-editor">
+        <div class="editor-header">
+          <span class="section-title" style="font-size:18px">EDITOR — <span id="editor-slug"></span></span>
+          <button class="btn" onclick="closeEditor()">✕ CERRAR</button>
+        </div>
+        <input type="hidden" id="editor-drop-id">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="form-group">
+            <label>Título</label>
+            <input type="text" id="editor-title" style="width:100%">
+          </div>
+          <div class="form-group">
+            <label>Subtítulo</label>
+            <input type="text" id="editor-subtitle" style="width:100%">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Cards JSON</label>
+          <textarea id="editor-cards-json" rows="20"></textarea>
+          <div class="json-meta" id="editor-json-meta"></div>
+        </div>
+        <div class="editor-actions">
+          <button class="btn btn-accent" onclick="saveDropChanges()">GUARDAR CAMBIOS</button>
+          <button class="btn" onclick="validateJSON('editor-cards-json','editor-json-meta')">VALIDAR JSON</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: LIVE -->
+    <div id="tab-live" class="tab-panel">
+      <div class="section-header">
+        <span class="section-title">LIVE DASHBOARD</span>
+        <button class="btn btn-accent" style="margin-left:auto" onclick="loadLive()">↺ REFRESH</button>
+      </div>
+      <div class="live-grid">
+        <div class="live-card">
+          <div class="label">Drop Activo</div>
+          <div class="value" id="live-drop-name" style="font-size:28px;word-break:break-all">—</div>
+          <div class="sub" id="live-drop-cards">— cards</div>
+        </div>
+        <div class="live-card">
+          <div class="label">Usuarios Aprobados</div>
+          <div class="value" id="live-approved">—</div>
+        </div>
+        <div class="live-card">
+          <div class="label">Sesiones Totales</div>
+          <div class="value" id="live-sessions">—</div>
+        </div>
+        <div class="live-card">
+          <div class="label">Tasa de Completitud</div>
+          <div class="value" id="live-completion">—</div>
+          <div class="sub" id="live-completion-detail"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+  let adminKey = '';
+  let allUsers = [];
+  let userFilter = 'all';
+  let dropsData = [];
+  let expandedRows = {};
+
+  // ─── AUTH ───────────────────────────────────────────────────────────────────
+  const authInput = document.getElementById('auth-input');
+  authInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryAuth(); });
+
+  async function tryAuth() {
+    const key = authInput.value.trim();
+    if (!key) return;
+    document.getElementById('auth-error').textContent = '';
+    try {
+      const res = await fetch('/api/admin/users', { headers: { 'X-Admin-Key': key } });
+      if (res.status === 401) {
+        document.getElementById('auth-error').textContent = '⚠ Clave incorrecta';
+        return;
+      }
+      adminKey = key;
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      loadUsers();
+    } catch(e) {
+      document.getElementById('auth-error').textContent = '⚠ Error de conexión';
+    }
+  }
+
+  function logout() {
+    adminKey = '';
+    allUsers = [];
+    dropsData = [];
+    expandedRows = {};
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    authInput.value = '';
+  }
+
+  // ─── API HELPER ─────────────────────────────────────────────────────────────
+  async function api(path, options = {}) {
+    const res = await fetch(path, {
+      ...options,
+      headers: {
+        'X-Admin-Key': adminKey,
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+
+  // ─── TOAST ──────────────────────────────────────────────────────────────────
+  let toastTimeout;
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = isError ? 'error' : '';
+    t.classList.add('show');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // ─── TABS ───────────────────────────────────────────────────────────────────
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      document.getElementById('tab-' + tab).classList.add('active');
+      if (tab === 'drops') loadDrops();
+      if (tab === 'live') loadLive();
+    });
+  });
+
+  // ─── USUARIOS ───────────────────────────────────────────────────────────────
+  async function loadUsers() {
+    document.getElementById('users-loading').style.display = 'block';
+    document.getElementById('users-table').style.display = 'none';
+    try {
+      allUsers = await api('/api/admin/users');
+      renderUsers();
+    } catch(e) {
+      document.getElementById('users-loading').textContent = '⚠ Error cargando usuarios';
+      showToast('Error: ' + e.message, true);
+    }
+  }
+
+  function setUserFilter(filter, btn) {
+    userFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderUsers();
+  }
+
+  function renderUsers() {
+    const filtered = userFilter === 'all' ? allUsers : allUsers.filter(u => u.user_status === userFilter);
+
+    document.getElementById('stat-total').textContent = allUsers.length;
+    document.getElementById('stat-approved').textContent = allUsers.filter(u => u.user_status === 'approved').length;
+    document.getElementById('stat-pending').textContent = allUsers.filter(u => u.user_status === 'pending').length;
+    document.getElementById('stat-rejected').textContent = allUsers.filter(u => u.user_status === 'rejected').length;
+
+    const tbody = document.getElementById('users-tbody');
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No hay usuarios con este filtro</td></tr>';
+    } else {
+      tbody.innerHTML = filtered.map(u => {
+        const name = u.first_name || u.username || 'Anónimo';
+        const status = u.user_status || 'pending';
+        const date = u.created_at ? u.created_at.slice(0,10) : '—';
+        return `<tr>
+          <td>${escHtml(name)}</td>
+          <td>${u.telegram_id || '—'}</td>
+          <td><span class="badge badge-${status}">${status}</span></td>
+          <td>${u.drops_completed ?? 0}</td>
+          <td>$${(u.total_cash || 0).toFixed(2)}</td>
+          <td>${u.total_tickets ?? 0}</td>
+          <td>${u.trap_score ?? 0}</td>
+          <td>${date}</td>
+          <td>
+            <div class="btn-group">
+              <button class="btn btn-approve" onclick="changeUserStatus('${u.id}','approved')">✅ Aprobar</button>
+              <button class="btn btn-reject" onclick="changeUserStatus('${u.id}','rejected')">❌ Rechazar</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('users-loading').style.display = 'none';
+    document.getElementById('users-table').style.display = 'table';
+  }
+
+  async function changeUserStatus(id, status) {
+    try {
+      await api(`/api/admin/users/${id}/status`, {
+        method: 'POST',
+        body: JSON.stringify({ status })
+      });
+      showToast(`✓ Usuario ${status}`);
+      loadUsers();
+    } catch(e) {
+      showToast('Error: ' + e.message, true);
+    }
+  }
+
+  // ─── RESPUESTAS ─────────────────────────────────────────────────────────────
+  async function loadResponses() {
+    const dropId = document.getElementById('drop-id-input').value.trim();
+    if (!dropId) return;
+    document.getElementById('responses-loading').style.display = 'block';
+    document.getElementById('responses-table').style.display = 'none';
+    document.getElementById('responses-empty').style.display = 'none';
+    expandedRows = {};
+    try {
+      const data = await api(`/api/admin/responses/${dropId}`);
+      renderResponses(data);
+    } catch(e) {
+      document.getElementById('responses-loading').style.display = 'none';
+      document.getElementById('responses-empty').style.display = 'block';
+      document.getElementById('responses-empty').textContent = '⚠ ' + e.message;
+      showToast('Error: ' + e.message, true);
+    }
+  }
+
+  function renderResponses(sessions) {
+    document.getElementById('responses-loading').style.display = 'none';
+
+    if (!sessions || !sessions.length) {
+      document.getElementById('responses-empty').style.display = 'block';
+      document.getElementById('responses-empty').textContent = 'No hay sesiones para este drop.';
+      return;
+    }
+
+    const tbody = document.getElementById('responses-tbody');
+    tbody.innerHTML = sessions.map((s, i) => {
+      const user = s.users || {};
+      const name = user.first_name || user.username || 'Anónimo';
+      const completed = s.completed_at ? '✅' : '—';
+      const date = s.started_at ? s.started_at.slice(0,16).replace('T',' ') : '—';
+      const trapDisp = s.trap_total > 0
+        ? `${s.trap_score}/${s.trap_total}`
+        : '—';
+      return `<tr id="session-row-${i}">
+          <td>${escHtml(name)}</td>
+          <td>${completed}</td>
+          <td>$${(s.total_cash || 0).toFixed(2)}</td>
+          <td>${s.total_tickets ?? 0}</td>
+          <td>${trapDisp}</td>
+          <td style="color:var(--muted)">${date}</td>
+          <td><button class="btn btn-accent" onclick="toggleResponses(${i})">▼ VER</button></td>
+        </tr>
+        <tr id="session-exp-${i}" class="responses-expanded" style="display:none">
+          <td colspan="7">
+            <div class="responses-inner">
+              ${renderResponseDetail(s.responses || [])}
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('responses-table').style.display = 'table';
+  }
+
+  function renderResponseDetail(responses) {
+    if (!responses.length) return '<p style="color:var(--muted);padding:8px">Sin respuestas registradas.</p>';
+    return `<table>
+      <thead><tr>
+        <th>Card ID</th><th>Formato</th><th>Respuesta</th><th>Latencia (ms)</th><th>Trap</th>
+      </tr></thead>
+      <tbody>
+        ${responses.map(r => {
+          const lat = r.latency_ms;
+          let latClass = 'lat-mid';
+          if (lat !== null && lat !== undefined) {
+            latClass = lat < 1500 ? 'lat-fast' : lat > 4000 ? 'lat-slow' : 'lat-mid';
+          }
+          let trapDisp = '—';
+          if (r.trap_passed === true) trapDisp = '✅';
+          else if (r.trap_passed === false) trapDisp = '❌';
+
+          return `<tr>
+            <td>${r.card_id}</td>
+            <td>${r.card_format || '—'}</td>
+            <td>${escHtml(String(r.response_value ?? '—'))}</td>
+            <td class="${latClass}">${lat !== null && lat !== undefined ? lat : '—'}</td>
+            <td>${trapDisp}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  function toggleResponses(i) {
+    const expRow = document.getElementById('session-exp-' + i);
+    const isVisible = expRow.style.display !== 'none';
+    expRow.style.display = isVisible ? 'none' : 'table-row';
+    const btn = document.querySelector(`#session-row-${i} button`);
+    if (btn) btn.textContent = isVisible ? '▼ VER' : '▲ OCULTAR';
+  }
+
+  // ─── DROPS ──────────────────────────────────────────────────────────────────
+  async function loadDrops() {
+    document.getElementById('drops-loading').style.display = 'block';
+    document.getElementById('drops-table').style.display = 'none';
+    try {
+      dropsData = await api('/api/admin/drops');
+      renderDrops();
+    } catch(e) {
+      document.getElementById('drops-loading').textContent = '⚠ Error: ' + e.message;
+      showToast('Error: ' + e.message, true);
+    }
+  }
+
+  function renderDrops() {
+    document.getElementById('drops-loading').style.display = 'none';
+    const tbody = document.getElementById('drops-tbody');
+
+    if (!dropsData.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No hay drops</td></tr>';
+      document.getElementById('drops-table').style.display = 'table';
+      return;
+    }
+
+    tbody.innerHTML = dropsData.map(d => {
+      const status = d.status || 'draft';
+      const cardsCount = Array.isArray(d.cards_json) ? d.cards_json.length
+        : (typeof d.cards_json === 'string' ? tryParseLen(d.cards_json) : '—');
+      const date = d.created_at ? d.created_at.slice(0,10) : '—';
+      const isActive = status === 'active';
+
+      return `<tr style="${isActive ? 'border:1px solid var(--accent);outline:1px solid var(--accent)' : ''}">
+        <td><span style="font-family:var(--mono)">${escHtml(d.slug || '')}</span></td>
+        <td>${escHtml(d.title || '')}</td>
+        <td><span class="badge badge-${status}">${status}</span></td>
+        <td>${cardsCount}</td>
+        <td>${d.sessions_count ?? '—'}</td>
+        <td style="color:var(--muted)">${date}</td>
+        <td>
+          <div class="btn-group">
+            ${!isActive ? `<button class="btn btn-accent" onclick="activateDrop('${d.id}')">⚡ ACTIVAR</button>` : ''}
+            <button class="btn" onclick="openEditor('${d.id}')">✏ EDITAR</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('drops-table').style.display = 'table';
+  }
+
+  function tryParseLen(jsonStr) {
+    try { const a = JSON.parse(jsonStr); return Array.isArray(a) ? a.length : '?'; }
+    catch { return '?'; }
+  }
+
+  async function activateDrop(id) {
+    if (!confirm('¿Activar este drop? El drop activo actual se desactivará.')) return;
+    try {
+      await api(`/api/admin/drops/${id}/activate`, { method: 'POST' });
+      showToast('✓ Drop activado');
+      loadDrops();
+    } catch(e) {
+      showToast('Error: ' + e.message, true);
+    }
+  }
+
+  async function openEditor(id) {
+    try {
+      const drop = await api(`/api/admin/drops/${id}`);
+      document.getElementById('editor-drop-id').value = id;
+      document.getElementById('editor-slug').textContent = drop.slug || id;
+      document.getElementById('editor-title').value = drop.title || '';
+      document.getElementById('editor-subtitle').value = drop.subtitle || '';
+      const cards = drop.cards_json;
+      document.getElementById('editor-cards-json').value = typeof cards === 'string'
+        ? cards : JSON.stringify(cards, null, 2);
+      document.getElementById('editor-json-meta').textContent = '';
+      document.getElementById('drop-editor').style.display = 'block';
+      document.getElementById('drop-editor').scrollIntoView({ behavior: 'smooth' });
+    } catch(e) {
+      showToast('Error: ' + e.message, true);
+    }
+  }
+
+  function closeEditor() {
+    document.getElementById('drop-editor').style.display = 'none';
+  }
+
+  async function saveDropChanges() {
+    const id = document.getElementById('editor-drop-id').value;
+    const title = document.getElementById('editor-title').value;
+    const subtitle = document.getElementById('editor-subtitle').value;
+    const cardsRaw = document.getElementById('editor-cards-json').value;
+    let cards_json;
+    try { cards_json = JSON.parse(cardsRaw); }
+    catch(e) {
+      showToast('JSON inválido: ' + e.message, true);
+      return;
+    }
+    try {
+      await api(`/api/admin/drops/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ title, subtitle, cards_json })
+      });
+      showToast('✓ Drop guardado');
+      loadDrops();
+    } catch(e) {
+      showToast('Error: ' + e.message, true);
+    }
+  }
+
+  function validateJSON(textareaId, metaId) {
+    const raw = document.getElementById(textareaId).value;
+    const meta = document.getElementById(metaId);
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) { meta.textContent = '⚠ El JSON debe ser un array'; meta.style.color = 'var(--error)'; return; }
+      meta.textContent = `✓ JSON válido — ${parsed.length} cards`;
+      meta.style.color = 'var(--success)';
+    } catch(e) {
+      meta.textContent = '⚠ ' + e.message;
+      meta.style.color = 'var(--error)';
+    }
+  }
+
+  function toggleNewDropForm() {
+    const form = document.getElementById('new-drop-form');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function createDrop() {
+    const slug = document.getElementById('new-slug').value.trim();
+    const title = document.getElementById('new-title').value.trim();
+    const subtitle = document.getElementById('new-subtitle').value.trim();
+    const cardsRaw = document.getElementById('new-cards-json').value;
+    if (!slug) { showToast('El slug es obligatorio', true); return; }
+    let cards_json;
+    try { cards_json = JSON.parse(cardsRaw); }
+    catch(e) { showToast('JSON inválido: ' + e.message, true); return; }
+    try {
+      await api('/api/admin/drops', {
+        method: 'POST',
+        body: JSON.stringify({ slug, title, subtitle, cards_json })
+      });
+      showToast('✓ Drop creado');
+      document.getElementById('new-slug').value = '';
+      document.getElementById('new-title').value = '';
+      document.getElementById('new-subtitle').value = '';
+      document.getElementById('new-cards-json').value = '';
+      document.getElementById('new-json-meta').textContent = '';
+      toggleNewDropForm();
+      loadDrops();
+    } catch(e) {
+      showToast('Error: ' + e.message, true);
+    }
+  }
+
+  // ─── LIVE ───────────────────────────────────────────────────────────────────
+  async function loadLive() {
+    document.getElementById('live-drop-name').textContent = '…';
+    document.getElementById('live-drop-cards').textContent = '—';
+    document.getElementById('live-approved').textContent = '…';
+    document.getElementById('live-sessions').textContent = '…';
+    document.getElementById('live-completion').textContent = '…';
+    document.getElementById('live-completion-detail').textContent = '';
+
+    try {
+      const [users, drops] = await Promise.all([
+        api('/api/admin/users'),
+        api('/api/admin/drops')
+      ]);
+
+      const approved = users.filter(u => u.user_status === 'approved').length;
+      document.getElementById('live-approved').textContent = approved;
+
+      const activeDrop = drops.find(d => d.status === 'active');
+      if (activeDrop) {
+        document.getElementById('live-drop-name').textContent = activeDrop.slug || activeDrop.title || '—';
+        const cards = activeDrop.cards_json;
+        const count = Array.isArray(cards) ? cards.length : tryParseLen(typeof cards === 'string' ? cards : '[]');
+        document.getElementById('live-drop-cards').textContent = count + ' cards';
+
+        // Load sessions for active drop
+        try {
+          const sessions = await api(`/api/admin/responses/${activeDrop.slug}`);
+          const total = sessions.length;
+          const completed = sessions.filter(s => s.completed_at).length;
+          const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+          document.getElementById('live-sessions').textContent = total;
+          document.getElementById('live-completion').textContent = rate + '%';
+          document.getElementById('live-completion-detail').textContent = `${completed} / ${total} sesiones`;
+        } catch {
+          document.getElementById('live-sessions').textContent = '—';
+          document.getElementById('live-completion').textContent = '—';
+        }
+      } else {
+        document.getElementById('live-drop-name').textContent = 'Ninguno';
+        document.getElementById('live-sessions').textContent = '—';
+        document.getElementById('live-completion').textContent = '—';
+      }
+    } catch(e) {
+      showToast('Error cargando live: ' + e.message, true);
+    }
+  }
+
+  // ─── UTILS ──────────────────────────────────────────────────────────────────
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+</script>
+</body>
+</html>
