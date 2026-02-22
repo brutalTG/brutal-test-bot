@@ -292,6 +292,206 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // ================================================================
+// ADMIN API — protegido por header X-Admin-Key
+// ================================================================
+const ADMIN_KEY = process.env.ADMIN_KEY || 'brutal_admin_2026';
+
+function checkAdmin(req, res, next) {
+    if (req.headers['x-admin-key'] !== ADMIN_KEY) {
+        return res.status(401).json({ error: 'No autorizado' });
+    }
+    next();
+}
+
+// --- USERS ---
+
+// Lista de usuarios
+app.get('/api/admin/users', checkAdmin, async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .select('id, telegram_id, first_name, username, user_status, total_cash, total_tickets, drops_completed, trap_score, created_at')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json(data || []);
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Cambiar estado de usuario (approve / reject / pending)
+app.post('/api/admin/users/:id/status', checkAdmin, async (req, res) => {
+    try {
+        const { status } = req.body;
+        if (!['approved', 'rejected', 'pending'].includes(status)) {
+            return res.status(400).json({ error: 'Estado inválido' });
+        }
+
+        const { error } = await supabase
+            .from('users')
+            .update({ user_status: status })
+            .eq('id', req.params.id);
+
+        if (error) throw error;
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// --- RESPONSES ---
+
+// Respuestas de un drop específico
+app.get('/api/admin/responses/:drop_id', checkAdmin, async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('drop_sessions')
+            .select(`
+                id,
+                user_id,
+                drop_id,
+                started_at,
+                completed_at,
+                total_cash,
+                total_tickets,
+                trap_score,
+                trap_total,
+                users!inner(telegram_id, first_name, username),
+                responses(card_id, card_format, response_value, latency_ms, trap_passed)
+            `)
+            .eq('drop_id', req.params.drop_id)
+            .order('started_at', { ascending: false });
+
+        if (error) throw error;
+        res.json(data || []);
+    } catch (err) {
+        console.error('Admin responses error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// --- DROPS ---
+
+// Lista de todos los drops
+app.get('/api/admin/drops', checkAdmin, async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('drops')
+            .select('id, slug, title, subtitle, status, created_at, activated_at, closed_at')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Contar sesiones por drop
+        for (const drop of data) {
+            const { count } = await supabase
+                .from('drop_sessions')
+                .select('id', { count: 'exact', head: true })
+                .eq('drop_id', drop.slug);
+            drop.sessions_count = count || 0;
+        }
+
+        res.json(data || []);
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Obtener un drop completo (con cards)
+app.get('/api/admin/drops/:id', checkAdmin, async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('drops')
+            .select('*')
+            .eq('id', req.params.id)
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Crear un drop nuevo
+app.post('/api/admin/drops', checkAdmin, async (req, res) => {
+    try {
+        const { slug, title, subtitle, cards_json, splash_text } = req.body;
+
+        if (!slug || !title || !cards_json) {
+            return res.status(400).json({ error: 'Faltan campos requeridos (slug, title, cards_json)' });
+        }
+
+        const { data, error } = await supabase
+            .from('drops')
+            .insert({
+                slug,
+                title,
+                subtitle,
+                cards_json,
+                splash_text: splash_text || null,
+                status: 'draft'
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error('Create drop error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Actualizar un drop (cards, título, etc)
+app.put('/api/admin/drops/:id', checkAdmin, async (req, res) => {
+    try {
+        const updates = {};
+        const allowed = ['title', 'subtitle', 'cards_json', 'splash_text'];
+        for (const key of allowed) {
+            if (req.body[key] !== undefined) updates[key] = req.body[key];
+        }
+
+        const { data, error } = await supabase
+            .from('drops')
+            .update(updates)
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Activar un drop (desactiva el anterior)
+app.post('/api/admin/drops/:id/activate', checkAdmin, async (req, res) => {
+    try {
+        // Desactivar todos los activos
+        await supabase
+            .from('drops')
+            .update({ status: 'closed', closed_at: new Date().toISOString() })
+            .eq('status', 'active');
+
+        // Activar el nuevo
+        const { data, error } = await supabase
+            .from('drops')
+            .update({ status: 'active', activated_at: new Date().toISOString() })
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ================================================================
 // TELEGRAM BOT
 // ================================================================
 
