@@ -47,6 +47,37 @@ app.get('/api/health', (req, res) => {
 });
 
 // ================================================================
+// API: Get active drop
+// La Mini App llama a esto al arrancar para saber qué Drop mostrar
+// ================================================================
+app.get('/api/drop/active', async (req, res) => {
+    try {
+        const { data: drop, error } = await supabase
+            .from('drops')
+            .select('slug, title, subtitle, cards_json, splash_text')
+            .eq('status', 'active')
+            .limit(1)
+            .single();
+
+        if (error || !drop) {
+            return res.status(404).json({ error: 'No hay Drop activo' });
+        }
+
+        res.json({
+            drop_id: drop.slug,
+            title: drop.title,
+            subtitle: drop.subtitle,
+            cards: drop.cards_json,
+            splash: drop.splash_text
+        });
+
+    } catch (err) {
+        console.error('Active drop error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ================================================================
 // API: Start a session (when user taps ENTRAR)
 // Returns session_id that the Mini App uses for all subsequent calls
 // ================================================================
@@ -275,12 +306,22 @@ bot.onText(/\/start/, async (msg) => {
         first_name: tgUser.first_name || null,
     }, { onConflict: 'telegram_id' });
 
+    // Buscar el drop activo para mostrar info dinámica
+    const { data: activeDrop } = await supabase
+        .from('drops')
+        .select('title, subtitle')
+        .eq('status', 'active')
+        .limit(1)
+        .single();
+
+    const dropInfo = activeDrop
+        ? `Drop activo: *${activeDrop.title}*`
+        : 'No hay Drop activo en este momento.';
+
     bot.sendMessage(chatId,
         `⚡ *BRUTAL*\n\n` +
         `Bienvenido al club.\n\n` +
-        `Cada semana lanzamos un *Drop*: 20 preguntas rápidas.\n` +
-        `Respondés → ganás cash + golden tickets.\n` +
-        `Hay trampas. Si caés, perdés.\n\n` +
+        `${dropInfo}\n\n` +
         `/drop — Jugar\n` +
         `/rewards — Tu plata\n` +
         `/leaderboard — Ranking`,
@@ -296,8 +337,22 @@ bot.onText(/\/start/, async (msg) => {
 });
 
 bot.onText(/\/drop/, async (msg) => {
+    // Buscar el drop activo
+    const { data: activeDrop } = await supabase
+        .from('drops')
+        .select('title, subtitle, cards_json')
+        .eq('status', 'active')
+        .limit(1)
+        .single();
+
+    if (!activeDrop) {
+        return bot.sendMessage(msg.chat.id, 'No hay Drop activo en este momento. Volvé pronto.');
+    }
+
+    const cardCount = activeDrop.cards_json ? activeDrop.cards_json.length : '?';
+
     bot.sendMessage(msg.chat.id,
-        `🎯 *Drop #02 — Verdad, Deseo y Performance*\n\n20 cartas. ~3 minutos. Cash real.`,
+        `🎯 *${activeDrop.title}*\n\n${activeDrop.subtitle || cardCount + ' cartas. Cash real.'}`,
         {
             parse_mode: 'Markdown',
             reply_markup: {
