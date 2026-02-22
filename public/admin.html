@@ -548,6 +548,7 @@
         <span style="color:var(--muted);font-size:11px;letter-spacing:1px;text-transform:uppercase;">DROP ID:</span>
         <input type="text" id="drop-id-input" value="drop_02" style="width:160px">
         <button class="btn btn-accent" onclick="loadResponses()">CARGAR</button>
+        <button class="btn" onclick="exportResponses()" style="margin-left:8px">📥 EXPORTAR JSON</button>
       </div>
 
       <div class="table-wrap">
@@ -1132,6 +1133,29 @@
       }
     } catch(e) {
       showToast('Error cargando live: ' + e.message, true);
+    }
+  }
+
+  // ─── EXPORT ─────────────────────────────────────────────────────────────────
+  async function exportResponses() {
+    const dropId = document.getElementById('drop-id-input').value.trim();
+    if (!dropId) { showToast('Ingresá un drop ID', true); return; }
+    try {
+      showToast('Exportando...');
+      const data = await api(`/api/admin/export/${dropId}`);
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `brutal_export_${dropId}_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`✓ Exportado: ${data.summary.total_sessions} sesiones`);
+    } catch(e) {
+      showToast('Error: ' + e.message, true);
     }
   }
 
