@@ -29,7 +29,7 @@ body {
 /* ====== FONDO GIF ====== */
 #bg-media {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    object-fit: cover; z-index: -3; opacity: 0.15;
+    object-fit: cover; z-index: -3; opacity: 0.6;
     pointer-events: none; mix-blend-mode: luminosity;
     transition: opacity 0.5s ease;
 }
@@ -108,11 +108,33 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:28px; h
 .il { position:absolute; bottom:0; left:0; width:100%; padding:15px; background:linear-gradient(to top, var(--bg-color), transparent); color:var(--text-color); font-size:1rem; font-weight:800; }
 
 /* RANKING */
-.rzt { display:flex; flex-direction:column; gap:8px; width:100%; min-height:140px; margin-bottom:15px; }
-.rzb { display:flex; flex-direction:column; gap:8px; width:100%; padding-top:15px; border-top:1px dashed var(--border-color); }
-.ri { background:var(--glass-bg); border:1px solid var(--border-color); color:var(--text-color); padding:1rem; border-radius:12px; font-size:0.9rem; font-weight:600; cursor:pointer; }
-.ri.p0 { background:var(--text-color); color:var(--bg-color); }
-.ri.p1 { opacity:0.9; } .ri.p2 { opacity:0.7; } .ri.p3 { opacity:0.5; }
+.rzt { display:flex; flex-direction:column; gap:10px; width:100%; }
+.rzt:not(:empty) { margin-bottom: 15px; }
+
+.rzb { display:flex; flex-direction:column; gap:10px; width:100%; }
+
+/* Línea divisoria dinámica: clara, gruesa, y solo aparece si hay elementos separados */
+.rzt:not(:empty) + .rzb:not(:empty) { 
+    padding-top: 15px; 
+    border-top: 2px dashed var(--text-color); 
+}
+
+.ri { 
+    background:var(--glass-bg); 
+    border:1px solid var(--border-color); 
+    color:var(--text-color); 
+    padding:1rem; 
+    border-radius:12px; 
+    font-size:0.95rem; 
+    font-weight:600; 
+    cursor:pointer; 
+    transition:transform 0.1s; 
+}
+.ri:active { transform:scale(0.97); }
+.ri.p0 { background:var(--text-color); color:var(--bg-color); border-color:var(--text-color); }
+.ri.p1 { opacity:0.9; } 
+.ri.p2 { opacity:0.7; } 
+.ri.p3 { opacity:0.5; }
 
 /* ====== CONFESIONARIO ====== */
 .conf-input { width:100%; padding:1rem; background:var(--glass-bg); border:1px solid var(--border-color); border-radius:12px; color:var(--text-color); font-size:1.1rem; font-weight:600; text-align:center; font-family:var(--font-main); }
