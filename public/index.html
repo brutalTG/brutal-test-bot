@@ -40,30 +40,24 @@
     <div id="card-container"></div>
 
 <script>
-// ====== MOTOR DE CONTRASTE (RANDOMA11Y EXACT LOGIC) ======
-function getRandomHex() {
-    return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-}
 
-function getLuminance(hex) {
-    let rgb = parseInt(hex.replace('#',''), 16);
-    let r = (rgb >> 16) & 0xff;
-    let g = (rgb >>  8) & 0xff;
-    let b = (rgb >>  0) & 0xff;
-    let a = [r, g, b].map(function (v) {
-        v /= 255;
-        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-    });
-    return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
-}
+// ====== MOTOR DE PALETAS CURADAS (RANDOMA11Y PREDEFINED) ======
+const curatedPairs = [
+    { bg: '#000000', fg: '#FFFFFF' },
+    { bg: '#6200EE', fg: '#FFFFFF' },
+    { bg: '#03DAC6', fg: '#000000' },
+    { bg: '#FF0266', fg: '#FFFFFF' },
+    { bg: '#121212', fg: '#BB86FC' },
+    { bg: '#FFFFFF', fg: '#1A73E8' },
+    { bg: '#1B5E20', fg: '#FFFFFF' },
+    { bg: '#FDD835', fg: '#000000' },
+    { bg: '#000000', fg: '#E91E63' },
+    { bg: '#311B92', fg: '#B3E5FC' },
+    { bg: '#E65100', fg: '#FFFDE7' },
+    { bg: '#212121', fg: '#8BC34A' }
+];
 
-function getContrastRatio(hex1, hex2) {
-    let lum1 = getLuminance(hex1);
-    let lum2 = getLuminance(hex2);
-    let lightest = Math.max(lum1, lum2);
-    let darkest = Math.min(lum1, lum2);
-    return (lightest + 0.05) / (darkest + 0.05);
-}
+let lastPairIndex = -1;
 
 function isLightColor(hex) {
     const r = parseInt(hex.slice(1, 3), 16);
@@ -74,14 +68,18 @@ function isLightColor(hex) {
 }
 
 function generateBrutalPalette() {
-    let bg, fg, contrastBgFg;
-    
+    let randomIndex;
+    // Evitar que toque exactamente la misma paleta dos veces seguidas
     do {
-        bg = getRandomHex();
-        fg = getRandomHex();
-        contrastBgFg = getContrastRatio(bg, fg);
-    } while (contrastBgFg < 8.0); 
+        randomIndex = Math.floor(Math.random() * curatedPairs.length);
+    } while (randomIndex === lastPairIndex);
+    lastPairIndex = randomIndex;
 
+    const pair = curatedPairs[randomIndex];
+    const bg = pair.bg;
+    const fg = pair.fg;
+
+    // Cálculo de transparencias para los bordes y el vidrio
     const isLight = isLightColor(bg);
     const borderColor = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)';
     const glassBg = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)';
