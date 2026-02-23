@@ -11,7 +11,7 @@
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#000;color:#fff;height:100vh;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
         
-        /* BAJAMOS LA OPACIDAD A 0.4 PARA MEJORAR CONTRASTE */
+        /* VIDEO BACKGROUND CON OPACIDAD 0.4 */
         #bg-video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:-3;opacity:0.4;pointer-events:none}
         
         /* ====== SPLASH ====== */
@@ -27,7 +27,7 @@
         .splash-error{font-size:13px;color:#F44336;margin-top:15px;max-width:280px;text-align:center}
         
         /* ====== HUD ====== */
-        #floating-hud{position:fixed;top:15px;left:50%;transform:translateX(-50%);width:92%;max-width:380px;z-index:20;background:rgba(30,30,30,.65);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:40px;border:1px solid rgba(255,255,255,.1);box-shadow:0 10px 30px rgba(0,0,0,.6),inset 0 1px 1px rgba(255,255,255,.05);display:none;align-items:center;justify-content:space-between;padding:10px 18px;transition:opacity 0.5s}
+        #floating-hud{position:fixed;top:25px;left:50%;transform:translateX(-50%);width:92%;max-width:380px;z-index:20;background:rgba(30,30,30,.65);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:40px;border:1px solid rgba(255,255,255,.1);box-shadow:0 10px 30px rgba(0,0,0,.6),inset 0 1px 1px rgba(255,255,255,.05);display:none;align-items:center;justify-content:space-between;padding:10px 18px;transition:opacity 0.5s}
         #floating-hud.visible{display:flex}
         .hud-side{display:flex;align-items:center;min-width:65px;transition:transform .15s}
         .cash-side{justify-content:flex-start}.ticket-side{justify-content:flex-end;gap:6px}
@@ -55,13 +55,13 @@
         #card-container{flex-grow:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:90px 20px 40px;text-align:center;width:100%;position:relative;overflow-y:auto;height:100vh}
         #card-inner{display:flex;flex-direction:column;align-items:center;width:100%;max-width:340px}
         
-        /* CAMBIO CLAVE: FUENTE DEL SISTEMA PARA LAS PREGUNTAS */
+        /* PREGUNTAS LEGIBLES */
         .cq{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.5px;margin-bottom:16px;line-height:1.35;text-shadow:0 2px 10px rgba(0,0,0,.9);color:#fcfcfc}
         
         .cn{font-family:'Bebas Neue',sans-serif;font-size:16px;color:#E8FF00;letter-spacing:3px;margin-bottom:12px;opacity:.8}
         .bc{display:flex;flex-direction:column;gap:12px;width:100%}
         
-        /* BOTONES MÁS LEGIBLES */
+        /* BOTONES LEGIBLES */
         .tb{background:rgba(25,25,25,.85);backdrop-filter:blur(8px);color:#fff;border:2px solid #444;border-radius:16px;padding:18px 16px;font-size:16px;font-weight:700;line-height:1.2;cursor:pointer;transition:all .15s}
         .tb:active{transform:scale(.95);background:rgba(50,50,50,.9)}
         .tb.sel{background:#E8FF00!important;color:#000!important;border-color:#E8FF00!important;transform:scale(.95)}
@@ -98,11 +98,11 @@
         .rcl{background:#4CAF50;color:#fff;border:none;border-radius:30px;padding:18px 40px;font-size:18px;font-weight:900;cursor:pointer;width:100%;letter-spacing:1px}
         .rcl:active{transform:scale(.95)}.rcl.sending{background:#555;pointer-events:none}
         
-        /* ====== PIEZA 1: TIMER ====== */
-        #timer-bar-wrap{width:100%;height:4px;background:rgba(255,255,255,.1);border-radius:2px;margin-bottom:24px;overflow:hidden}
-        #timer-bar-fill{height:100%;width:100%;border-radius:2px;background:#E8FF00;transition:background-color 0.3s}
-        #timer-bar-fill.warning{background:#F44336;animation:timerPulse 0.5s ease-in-out infinite}
-        @keyframes timerPulse{0%,100%{opacity:1}50%{opacity:0.4}}
+        /* ====== PIEZA 1: TIMER (ANSIEDAD PERIFÉRICA) ====== */
+        #timer-bar-wrap{position:fixed;top:0;left:0;width:100vw;height:6px;background:rgba(255,255,255,.05);z-index:9999;overflow:hidden}
+        #timer-bar-fill{height:100%;width:100%;background:#E8FF00;box-shadow:0 0 12px rgba(232,255,0,0.6);transition:background-color 0.3s}
+        #timer-bar-fill.warning{background:#F44336;box-shadow:0 0 15px rgba(244,67,54,0.8);animation:timerPulse 0.4s ease-in-out infinite}
+        @keyframes timerPulse{0%,100%{opacity:1}50%{opacity:0.3}}
         #timeout-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(244,67,54,0.95);display:flex;justify-content:center;align-items:center;z-index:9998;opacity:0;pointer-events:none;transition:opacity 0.15s}
         #timeout-overlay.active{opacity:1}
         #timeout-overlay .timeout-text{font-family:'Bebas Neue',sans-serif;font-size:48px;color:#fff;letter-spacing:3px;text-align:center;text-shadow:0 4px 20px rgba(0,0,0,.5);line-height:1}
@@ -137,6 +137,9 @@
         <source src="background.mp4" type="video/mp4">
         <source src="background.MOV" type="video/quicktime">
     </video>
+    
+    <div id="timer-bar-wrap"><div id="timer-bar-fill"></div></div>
+
     <div id="splash">
         <div class="splash-logo">BRUTAL</div>
         <div class="splash-sub">The Insight Club</div>
@@ -145,6 +148,7 @@
         <button class="splash-enter" id="splash-btn" disabled onclick="initDrop()">ENTRAR</button>
         <div class="splash-error" id="splash-error" style="display:none"></div>
     </div>
+    
     <div id="floating-hud">
         <div class="hud-side cash-side" id="box-cash"><span class="hud-val" id="val-cash">$0.00</span></div>
         <div class="hud-center"><div class="progress-track" id="pbar"></div></div>
@@ -153,10 +157,13 @@
             <img src="golden_ticket_3d.png" class="hud-icon-img" alt="T">
         </div>
     </div>
+    
     <div id="blink-fx"></div>
     <div id="timeout-overlay"><div class="timeout-text">BRUTAL<br>ELIGIÓ<br>POR VOS</div></div>
     <div id="intersticial-overlay"><div id="intersticial-text"></div></div>
+    
     <div id="card-container"></div>
+
 <script>
 const API_URL=window.location.origin;
 let D=[];
@@ -247,14 +254,13 @@ function render(i){
     if(!d){renderReceipt(c);return}
     ct=Date.now();slStep=-1;
     const isConf=d.f==='confesionario';
-    // AQUÍ TAMBIÉN AJUSTÉ EL CÓDIGO JS QUE RESTAURA LA OPACIDAD AL 0.4
     document.getElementById('bg-video').style.opacity=isConf?'0':'0.4';
     c.style.background=isConf?'#000':'transparent';
     if(!isConf){const hud=document.getElementById('floating-hud');hud.style.transition='opacity 0.5s';hud.style.opacity='1'}
     let h='<div id="card-inner">';
     h+='<div class="cn anim-in">'+(i+1)+' / '+D.length+'</div>';
     if(d.f!=='confesionario'){h+='<div class="cq anim-in">'+d.q+'</div>'}
-    h+='<div id="timer-bar-wrap"><div id="timer-bar-fill"></div></div>';
+    
     switch(d.f){
         case 'binary':h+='<div class="bc">';d.o.forEach((o,j)=>{h+='<button class="tb anim-in d'+(j+1)+'" onclick="hBin(\''+d.id+'\',\''+o.id+'\',this,\''+d.r.t+'\','+d.r.m+')">'+o.l+'</button>'});h+='</div>';break;
         case 'multi_select':ms=[];h+='<div class="bc">';d.o.forEach((o,j)=>{h+='<button id="ms-'+o.id+'" class="tb anim-in d'+Math.min(j+1,4)+'" onclick="tMS(\''+o.id+'\')">'+o.l+'</button>'});h+='</div><button id="msc" class="cb anim-in d4" disabled onclick="hMS(\''+d.id+'\',\''+d.r.t+'\','+d.r.m+')">Confirmar</button>';break;
