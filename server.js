@@ -54,6 +54,31 @@ app.get('/api/health', (req, res) => {
 });
 
 // ================================================================
+// DEBUG: ESCÁNER DE ARCHIVOS
+// ================================================================
+app.get('/api/debug', (req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    try {
+        const rootFiles = fs.readdirSync(__dirname);
+        let publicFiles = [];
+        try {
+            publicFiles = fs.readdirSync(path.join(__dirname, 'public'));
+        } catch (e) {
+            publicFiles = ['ERROR: LA CARPETA PUBLIC NO EXISTE ACÁ'];
+        }
+        res.json({ 
+            directorio_actual: __dirname,
+            archivos_raiz: rootFiles, 
+            archivos_en_public: publicFiles 
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ================================================================
 // PUBLIC: Get active drop
 // ================================================================
 app.get('/api/drop/active', async (req, res) => {
