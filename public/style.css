@@ -26,8 +26,69 @@ body {
 }
 
 /* VIDEO BACKGROUND CON OPACIDAD SUTIL */
-#bg-video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:-3;opacity:0.15;pointer-events:none;mix-blend-mode:luminosity;}
+/* ====== FONDO ANIMADO MUTANTE ====== */
+#animated-bg {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  z-index: -3; pointer-events: none; overflow: hidden;
+}
 
+/* Grilla (Se tiñe con el color del borde transparente) */
+.grid-layer {
+  position: absolute; inset: 0;
+  background-image: 
+    linear-gradient(var(--border-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
+  background-size: 50px 50px; background-position: center center;
+  mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%);
+  -webkit-mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%);
+  opacity: 0.8;
+}
+
+/* Manchas animadas (Se tiñen con el color del texto) */
+.blobs-layer {
+  position: absolute; inset: 0;
+  filter: blur(80px);
+  opacity: 0.25; /* Opacidad baja para no arruinar la legibilidad de la card */
+  transition: opacity 0.5s;
+}
+
+.blob {
+  position: absolute; border-radius: 50%;
+  background: var(--text-color); /* Mutación automática */
+  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.blob-1 {
+  width: 600px; height: 600px; top: -100px; left: -100px;
+  animation: float 25s infinite alternate ease-in-out;
+}
+.blob-2 {
+  width: 500px; height: 500px; bottom: -50px; right: 10%;
+  animation: float 30s infinite alternate-reverse ease-in-out;
+}
+.blob-3 {
+  width: 450px; height: 450px; top: 20%; right: 20%;
+  animation: float 20s infinite alternate ease-in-out;
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  50% { transform: translate(100px, 50px) scale(1.1) rotate(10deg); }
+  100% { transform: translate(-50px, 150px) scale(0.9) rotate(-10deg); }
+}
+
+/* Escáner de luz */
+.scan-line {
+  position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, var(--glass-bg), transparent);
+  transform: skewX(-20deg);
+  animation: scan 8s infinite linear;
+}
+
+@keyframes scan {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
 /* ====== SPLASH ====== */
 #splash { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:100; display:flex; flex-direction:column; justify-content:center; align-items:center; background:var(--bg-color); transition:opacity 0.5s; padding:2rem; }
 #splash.hide { opacity:0; pointer-events:none; }
