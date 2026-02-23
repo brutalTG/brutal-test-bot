@@ -2,7 +2,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#000;color:#fff;height:100vh;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 
-/* VIDEO BACKGROUND CON OPACIDAD 0.3 */
+/* VIDEO BACKGROUND */
 #bg-video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:-3;opacity:0.3;pointer-events:none}
 
 /* ====== SPLASH ====== */
@@ -46,13 +46,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 #card-container{flex-grow:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:90px 20px 40px;text-align:center;width:100%;position:relative;overflow-y:auto;height:100vh}
 #card-inner{display:flex;flex-direction:column;align-items:center;width:100%;max-width:340px}
 
-/* PREGUNTAS LEGIBLES */
+/* PREGUNTAS */
 .cq{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-weight:500;font-size:22px;letter-spacing:-0.5px;margin-bottom:16px;line-height:1.35;text-shadow:0 0px 10px rgba(0,0,0,.9);color:#fcfcfc}
-
 .cn{font-family:'Bebas Neue',sans-serif;font-size:16px;color:#E8FF00;letter-spacing:3px;margin-bottom:12px;opacity:.8}
 .bc{display:flex;flex-direction:column;gap:12px;width:100%}
 
-/* BOTONES LEGIBLES */
+/* BOTONES */
 .tb{background:rgba(25,25,25,.85);backdrop-filter:blur(8px);color:#fff;border:2px solid #444;border-radius:16px;padding:18px 16px;font-size:16px;font-weight:500;line-height:1.2;cursor:pointer;transition:all .15s}
 .tb:active{transform:scale(.95);background:rgba(50,50,50,.9)}
 .tb.sel{background:#E8FF00!important;color:#000!important;border-color:#E8FF00!important;transform:scale(.95)}
@@ -89,7 +88,7 @@ input[type=text]:focus{outline:none;border-color:#E8FF00}input[type=text]::place
 .rcl{background:#4CAF50;color:#fff;border:none;border-radius:30px;padding:18px 40px;font-size:18px;font-weight:900;cursor:pointer;width:100%;letter-spacing:1px}
 .rcl:active{transform:scale(.95)}.rcl.sending{background:#555;pointer-events:none}
 
-/* ====== PIEZA 1: TIMER (ANSIEDAD PERIFÉRICA) ====== */
+/* ====== TIMER ====== */
 #timer-bar-wrap{position:fixed;top:0;left:0;width:100vw;height:10px;background:rgba(255,255,255,.05);z-index:9999;overflow:hidden}
 #timer-bar-fill{height:100%;width:100%;background:#E8FF00;box-shadow:0 0 12px rgba(232,255,0,0.6);transition:background-color 0.3s}
 #timer-bar-fill.warning{background:#F44336;box-shadow:0 0 15px rgba(244,67,54,0.8);animation:timerPulse 0.4s ease-in-out infinite}
@@ -98,21 +97,38 @@ input[type=text]:focus{outline:none;border-color:#E8FF00}input[type=text]::place
 #timeout-overlay.active{opacity:1}
 #timeout-overlay .timeout-text{font-family:'Bebas Neue',sans-serif;font-size:48px;color:#fff;letter-spacing:3px;text-align:center;text-shadow:0 4px 20px rgba(0,0,0,.5);line-height:1}
 
-/* ====== PIEZA 2: INTERSTICIALES ====== */
-#intersticial-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;display:flex;justify-content:center;align-items:center;z-index:9997;opacity:0;pointer-events:none;transition:opacity 0.2s;padding:30px}
+/* ====== INTERSTICIALES (UPGRADED) ====== */
+#intersticial-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;display:flex;justify-content:center;align-items:center;z-index:9997;opacity:0;pointer-events:none;transition:opacity 0.2s;padding:30px}
 #intersticial-overlay.active{opacity:1;pointer-events:all}
 #intersticial-text{font-family:'Bebas Neue',sans-serif;font-size:36px;text-align:center;line-height:1.1;letter-spacing:2px;max-width:320px}
+/* Tipo: provocador — amarillo sobre negro */
 .inter-provocador{color:#E8FF00;animation:interShake 0.4s ease-in-out}
-.inter-sincero{color:#888;animation:interFadeIn 0.6s ease}
+/* Tipo: sincero — gris suave */
+.inter-sincero{color:#888;font-size:28px;letter-spacing:1px;animation:interFadeIn 0.6s ease}
+/* Tipo: absurdo — blanco con glitch en rojo */
 .inter-absurdo{color:#fff;animation:interGlitch 0.5s ease}
+/* Tipo: criptico — amarillo pulsante */
 .inter-criptico{color:#E8FF00;animation:interPulse 2s ease-in-out infinite}
-.inter-dato{color:#4CAF50}
+/* Tipo: dato — verde monospace */
+.inter-dato{color:#4CAF50;font-family:'Courier New',monospace;font-size:28px;letter-spacing:0}
+/* Tipo: standup — blanco itálico, slide-in */
+.inter-standup{color:#ccc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-style:italic;font-size:24px;font-weight:400;letter-spacing:0;animation:interSlideIn 0.5s ease-out}
+
 @keyframes interShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
 @keyframes interFadeIn{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
 @keyframes interGlitch{0%{text-shadow:2px 0 #ff0000,-2px 0 #00ffff;transform:skewX(-2deg)}25%{text-shadow:-2px 0 #ff0000,2px 0 #00ffff;transform:skewX(2deg)}50%{text-shadow:1px 0 #ff0000,-1px 0 #00ffff;transform:skewX(-1deg)}75%{text-shadow:-1px 0 #ff0000,1px 0 #00ffff;transform:skewX(1deg)}100%{text-shadow:none;transform:skewX(0)}}
 @keyframes interPulse{0%,100%{opacity:0.4}50%{opacity:1}}
+@keyframes interSlideIn{0%{opacity:0;transform:translateY(20px)}100%{opacity:1;transform:translateY(0)}}
 
-/* ====== PIEZA 4: CONFESIONARIO ====== */
+/* Intersticial background colors by tipo */
+#intersticial-overlay.bg-provocador{background:#000}
+#intersticial-overlay.bg-sincero{background:rgba(15,15,15,0.97)}
+#intersticial-overlay.bg-absurdo{background:rgba(200,0,40,0.95)}
+#intersticial-overlay.bg-criptico{background:#000}
+#intersticial-overlay.bg-dato{background:rgba(10,15,25,0.97)}
+#intersticial-overlay.bg-standup{background:rgba(15,15,15,0.97)}
+
+/* ====== CONFESIONARIO ====== */
 .conf-input{width:100%;padding:18px;background:rgba(20,20,20,.9);border:2px solid #333;border-radius:12px;color:#fff;font-size:18px;font-weight:600;text-align:center;margin-bottom:10px;animation:confPulse 3s ease-in-out infinite}
 .conf-input:focus{outline:none;border-color:#E8FF00;animation:none}
 .conf-input::placeholder{color:#444;font-weight:500}
@@ -121,3 +137,57 @@ input[type=text]:focus{outline:none;border-color:#E8FF00}input[type=text]::place
 @keyframes burnText{0%{opacity:1;filter:blur(0);color:#fff;transform:translateY(0)}30%{color:#ff8c00}60%{color:#ff4500;filter:blur(2px);transform:translateY(-5px)}100%{opacity:0;filter:blur(8px);color:transparent;transform:translateY(-20px)}}
 .conf-saved{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#555;letter-spacing:4px;opacity:0;animation:confSavedIn 0.3s ease forwards}
 @keyframes confSavedIn{0%{opacity:0}100%{opacity:1}}
+
+/* ====== NEW: SPEED ROUND ====== */
+.speed-stimulus{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:3px;color:#fff;margin-bottom:20px;text-shadow:0 0 30px rgba(255,255,255,.2);animation:stimulusPop .25s cubic-bezier(.16,1,.3,1) forwards}
+@keyframes stimulusPop{0%{opacity:0;transform:scale(.7)}100%{opacity:1;transform:scale(1)}}
+.speed-counter{font-family:'Bebas Neue',sans-serif;font-size:14px;color:#555;letter-spacing:4px;margin-bottom:25px}
+.speed-btns{display:flex;gap:12px;width:100%}
+.speed-btns .tb{flex:1;padding:20px 10px;font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:1px}
+.speed-progress{display:flex;gap:6px;margin-top:20px}
+.speed-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.15);transition:all .2s}
+.speed-dot.done{background:#E8FF00;box-shadow:0 0 8px rgba(232,255,0,.5)}
+.speed-dot.active{background:#fff;box-shadow:0 0 12px rgba(255,255,255,.5);transform:scale(1.3)}
+/* Mini timer for speed round */
+.speed-timer{width:80%;height:4px;background:rgba(255,255,255,.1);border-radius:2px;margin-top:15px;overflow:hidden}
+.speed-timer-fill{height:100%;background:#E8FF00;border-radius:2px;transition:width linear}
+
+/* ====== NEW: HOT TAKE ====== */
+.ht-card{display:flex;flex-direction:column;align-items:center;width:100%}
+.ht-statement{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;line-height:1.1;margin-bottom:25px;text-shadow:0 2px 15px rgba(0,0,0,.5)}
+.ht-btns{display:flex;gap:12px;width:100%}
+.ht-btns .tb{flex:1;font-weight:900;font-size:17px;letter-spacing:1px;text-transform:uppercase}
+/* Hot take backgrounds */
+.ht-bg-yellow{background:#E8FF00!important}
+.ht-bg-yellow .ht-statement{color:#000}
+.ht-bg-yellow .cn{color:#000;opacity:.5}
+.ht-bg-red{background:rgba(200,0,40,0.92)!important}
+.ht-bg-red .ht-statement{color:#fff}
+.ht-bg-darkblue{background:rgba(10,15,40,0.95)!important}
+.ht-bg-darkblue .ht-statement{color:#E8FF00}
+
+/* ====== NEW: PREDICTION ====== */
+.pred-event{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;line-height:1.15;margin-bottom:6px;color:#fff}
+.pred-label{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:4px;color:#E8FF00;margin-bottom:20px;opacity:.7}
+.pred-btns{display:flex;gap:12px;width:100%;margin-bottom:8px}
+.pred-btns .tb{flex:1;font-weight:900;font-size:17px;letter-spacing:1px;text-transform:uppercase}
+.pred-btns .tb.sel{background:#E8FF00!important;color:#000!important;border-color:#E8FF00!important}
+/* Bet phase */
+.pred-bet-wrap{width:100%;animation:slideUp .4s cubic-bezier(.16,1,.3,1) forwards;opacity:0}
+.pred-bet-label{font-size:14px;color:#888;margin:15px 0 8px;font-weight:600}
+.pred-bet-val{font-family:'Bebas Neue',sans-serif;font-size:48px;color:#E8FF00;margin:10px 0}
+.pred-bet-range{width:100%}
+
+/* ====== NEW: COMPLETE ====== */
+.comp-phrase{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-weight:500;font-size:22px;line-height:1.35;color:#fcfcfc;margin-bottom:20px}
+.comp-blank{color:#E8FF00;animation:blinkCaret 1s step-end infinite}
+@keyframes blinkCaret{0%,100%{opacity:1}50%{opacity:0}}
+.comp-input{width:100%;padding:15px;background:rgba(25,25,25,.85);border:2px solid #444;border-radius:12px;color:#E8FF00;font-size:20px;font-weight:700;text-align:center;margin-bottom:5px}
+.comp-input:focus{outline:none;border-color:#E8FF00}
+.comp-input::placeholder{color:#444;font-weight:500;font-size:16px}
+.comp-chars{font-size:12px;color:#555;margin-bottom:10px}
+
+/* ====== MICRO-REACTION ====== */
+.micro-reaction{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);font-size:15px;color:#555;font-style:italic;font-weight:500;opacity:0;z-index:25;pointer-events:none;white-space:nowrap}
+@keyframes reactionIn{0%{opacity:0;transform:translateX(-50%) translateY(5px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}85%{opacity:1;transform:translateX(-50%) translateY(0)}100%{opacity:0;transform:translateX(-50%) translateY(-5px)}}
+.micro-reaction.show{animation:reactionIn 2s ease forwards}
