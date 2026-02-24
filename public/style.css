@@ -26,8 +26,8 @@
   --glass-bg:     rgba(255, 255, 255, 0.08);
 
   /* Tipografías */
-  --font-display: 'Syne', sans-serif;
-  --font-mono:    'Space Mono', monospace;
+  --font-display: 'inter', sans-serif;
+  --font-mono:    'inter', monospace;
 
   /* Geometría */
   --radius-card: 20px;
@@ -41,7 +41,7 @@
   --gif-blend-splash:      luminosity; /* ← EDITAR: normal | luminosity | overlay | screen | multiply */
 
   /* Drop (cards) */
-  --gif-opacity-drop:      0.35;       /* ← EDITAR */
+  --gif-opacity-drop:      0.95;       /* ← EDITAR */
   --gif-blend-drop:        luminosity; /* ← EDITAR */
 
   /* Receipt (pantalla final) */
@@ -258,7 +258,7 @@ body.section-receipt #bg-media {
   top: 12px; left: 12px; right: 12px;
   z-index: 20;
   background: var(--bg-color);
-  border: 1px solid var(--border-color);
+  border: 0px solid var(--border-color);
   display: none;
   align-items: center;
   justify-content: space-between;
@@ -429,7 +429,7 @@ body.section-receipt #bg-media {
   flex-direction: column;
   align-items: center;
   background: var(--bg-color);
-  border: 1px solid var(--border-color);
+  border: 0px solid var(--border-color);
 }
 
 /* -------- Card badge / nombre -------- */
@@ -442,7 +442,7 @@ body.section-receipt #bg-media {
   margin-bottom: 1rem;
   background: var(--glass-bg);
   padding: 5px 10px;
-  border: 1px solid var(--border-color);
+  border: 0px solid var(--border-color);
   font-family: var(--font-mono);
   color: var(--text-color);
 }
